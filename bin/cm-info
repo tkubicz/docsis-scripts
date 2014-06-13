@@ -81,7 +81,7 @@ case $CMTS_DOCSIS_CAPABILITY in
     docsis10|1)
         CMTS_DOCSIS_CAPABILITY=1.0
         ;;
-    docsis11|3)
+    docsis11|2)
         CMTS_DOCSIS_CAPABILITY=1.1
         ;;
     docsis20|3)
@@ -164,7 +164,7 @@ case $CM_DOCSIS_CAPABILITY in
     docsis10|1)
         CM_DOCSIS_CAPABILITY=1.0
         ;;
-    docsis11|3)
+    docsis11|2)
         CM_DOCSIS_CAPABILITY=1.1
         ;;
     docsis20|3)
@@ -266,6 +266,7 @@ if [ ${CM_D3_BONDING} -eq 0 ] || [ ${CMTS_D3_BONDING} -eq 0 ]; then
     cat << EOF
 ### Cable Modem RF/SNR Levels
 Cable Modem IP address:   ${CM_IP4ADDR} / ${CM_IP6ADDR}
+
 Downstream Power Level:   ${CM_RF_DS:-N/A} dBmV
 Upstream Power Level:     ${CM_RF_US:-N/A} TenthdBmV
 Downstream SNR:           ${CM_SNR_DS:-N/A} TenthdB
