@@ -1,0 +1,157 @@
+#!/usr/bin/env bash
+
+CM_SNMP_COMMUNITY=private
+
+usage()
+{
+cat << EOF
+usage: $0 options
+
+This script forces software upgrade to Cable Modem
+More scripts at https://github.com/martinclaro/docsis-scripts/
+
+OPTIONS:
+    -h          Show this message
+    -a          CM IP address
+    -c text     CM SNMP Community (default: ${CM_SNMP_COMMUNITY})
+    -t addr     TFTP IP address
+    -f filename Software filename
+
+EOF
+}
+
+read_var()
+{
+    if [ "X$2" != "X" ]; then
+        read -p "$1 (default: $2): " var
+    else
+        read -p "$1: " var
+    fi
+    if [ -z "$var" ]; then echo $2; else echo $var; fi
+}
+
+f_snmpset()
+{
+    L_OID=${1}
+    L_OID_TYPE=${2}
+    L_OID_VALUE=${3}
+    snmpset -v2c -c "${CM_SNMP_COMMUNITY}" "${CM_IPADDR}" "${L_OID}" "${L_OID_TYPE}" "${L_OID_VALUE}"
+}
+
+f_snmpwalk()
+{
+    L_OID=${1}
+    snmpbulkwalk -v2c -c "${CM_SNMP_COMMUNITY}" -m all "${CM_IPADDR}" "${L_OID}"
+}
+
+f_ipv6_expand()
+{
+    L_IPV6=`echo "${1}" | tr '[:upper:]' '[:lower:]' | sed -e 's,[^a-f0-9\:],,g'`
+    L_TMP0=`echo "${L_IPV6}" | grep '::'`
+    L_TMP1=`echo "${L_IPV6}" | sed -e 's,[^\:],,g' | wc -m | awk '{print $1}'`
+    if [ ${L_TMP1} -eq 1 ]; then
+        # Straight IPv6 address
+        L_IPV6=${L_IPV6:0:4}:${L_IPV6:4:4}:${L_IPV6:8:4}:${L_IPV6:12:4}:${L_IPV6:16:4}:${L_IPV6:20:4}:${L_IPV6:24:4}:${L_IPV6:28:4}
+        L_TMP0=`echo "${L_IPV6}" | grep '::'`
+        L_TMP1=`echo "${L_IPV6}" | sed -e 's,[^\:],,g' | wc -m | awk '{print $1}'`
+    fi
+
+    if [ "x${L_TMP0}" == "x" ]; then
+        L_BLKS=$[ 9 - ${L_TMP1} ]
+    else
+        L_BLKS=$[ 8 - ${L_TMP1} ]
+    fi
+
+    if [ $L_BLKS -lt 7 ]; then
+        L_FILL=`echo "${L_BLKS}" | awk '{for(i=0;i<=$1;i++)x=x""sprintf (":%4s", "0");gsub(/ /,"0",x);print x}'`
+        L_IPV6=`echo "${L_IPV6}" | sed 's,::,'${L_FILL}:',g'`
+    fi
+
+    L_RET=`echo "${L_IPV6}" | awk 'BEGIN{FS=":"}{for(i=1;i<=NF;i++)x=x""sprintf ("%4s:", $i);gsub(/ /,"0",x);print substr(x,0,39)}'`
+    echo ${L_RET:0:39}
+}
+
+while getopts “ha:c:t:T:f:” OPTION
+do
+    case $OPTION in
+        h)
+            usage
+            exit 1
+            ;;
+        a)
+            CM_IPADDR=${OPTARG}
+            ;;
+        c)
+            CM_SNMP_COMMUNITY=${OPTARG}
+            ;;
+        t)
+            TFTP_SERVER_T=1         # IPv4
+            TFTP_SERVER=`echo "${OPTARG}" | sed -e 's,[^0-9\.],,g'`
+            TFTP_SERVER_6="00000000000000000000000000000000"
+            TFTP_SERVER_X=`echo "${OPTARG}" | awk 'BEGIN{FS="."}{printf "0x%02x%02x%02x%02x", $1, $2, $3, $4}'`
+            ;;
+        T)
+            TFTP_SERVER_T=2         # IPv6
+            TFTP_SERVER="0.0.0.0"
+            TFTP_SERVER_6=`f_ipv6_expand "${OPTARG}"`
+            TFTP_SERVER_X="0x"`echo "${TFTP_SERVER_6}" | sed 's,:,,g'`
+            ;;
+        f)
+            SW_FILENAME=${OPTARG}
+            ;;
+        ?)
+            usage
+            exit 1
+            ;;
+    esac
+done
+
+if [ "x${CM_IPADDR}" == "x" ] || \
+   [ "x${CM_SNMP_COMMUNITY}" == "x" ] || \
+   [ "x${TFTP_SERVER}" == "x" ] || \
+   [ "x${SW_FILENAME}" == "x" ]; then
+    usage
+    exit 1
+fi
+
+echo ""
+echo "### Initial settings"
+f_snmpwalk ".1.3.6.1.2.1.69.1.3"
+
+CONT=`read_var "Continue?" "n"`
+if [ "x${CONT}" == "xn" ]; then
+    exit 1
+fi
+
+echo ""
+echo "### Setting software upgrade..."
+f_snmpset ".1.3.6.1.2.1.69.1.3.1.0" "a" "${TFTP_SERVER}"    # DOCS-CABLE-DEVICE-MIB::docsDevSwServer.0
+f_snmpset ".1.3.6.1.2.1.69.1.3.2.0" "s" "${SW_FILENAME}"    # DOCS-CABLE-DEVICE-MIB::docsDevSwFilename.0
+f_snmpset ".1.3.6.1.2.1.69.1.3.6.0" "i" "${TFTP_SERVER_T}"  # DOCS-CABLE-DEVICE-MIB::docsDevSwServerAddressType.0
+f_snmpset ".1.3.6.1.2.1.69.1.3.7.0" "x" "${TFTP_SERVER_X}"  # DOCS-CABLE-DEVICE-MIB::docsDevSwServerAddress.0
+f_snmpset ".1.3.6.1.2.1.69.1.3.3.0" "i" "1"                 # DOCS-CABLE-DEVICE-MIB::docsDevSwAdminStatus.0
+
+CONT=w
+echo ""
+echo "### Final settings"
+while [ "x${CONT}" == "xw" ]; do
+    f_snmpwalk ".1.3.6.1.2.1.69.1.3"
+    f_snmpwalk ".1.3.6.1.2.1.10.127.6.1.4"
+
+    CONT=`read_var "Continue?" "w"`
+    if [ "x${CONT}" == "xn" ]; then
+        exit 1
+    elif [ "x${CONT}" != "xy" ]; then
+        CONT=w
+        echo ""
+        echo "### Updated Final settings"
+    fi
+done
+
+echo ""
+echo "### Rebooting device..."
+f_snmpset ".1.3.6.1.2.1.69.1.1.3.0" "i" "1"
+
+echo ""
+
+exit 0

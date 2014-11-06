@@ -42,7 +42,7 @@ f_snmpgetnext_enum()
     L_COMMUNITY=${1}
     L_ADDR=${2}
     L_OID=${3}
-    snmpget -v2c -c "${L_COMMUNITY}" -Ih -OnqU -m all "${L_ADDR}" "${L_OID}" 2>/dev/null
+    snmpgetnext -v2c -c "${L_COMMUNITY}" -Ih -OnqU -m all "${L_ADDR}" "${L_OID}" 2>/dev/null
 }
 
 f_ipv6_expand()
@@ -113,22 +113,27 @@ printf "\nLoading information... Please wait... "
 export MIBS=""
 
 # Loading OIDs
-SNMP_SYS_DESCR_OID=".1.3.6.1.2.1.1.1.0"                     # SNMPv2-MIB::sysDescr.0
-SNMP_SYS_OBJECTID_OID=".1.3.6.1.2.1.1.2.0"                  # SNMPv2-MIB::sysObjectID.0
-SNMP_SYS_UPTIME_OID=".1.3.6.1.2.1.1.3.0"                    # DISMAN-EVENT-MIB::sysUpTimeInstance.0
-SNMP_SYS_CONTACT_OID=".1.3.6.1.2.1.1.4.0"                   # SNMPv2-MIB::sysContact.0
-SNMP_SYS_NAME_OID=".1.3.6.1.2.1.1.5.0"                      # SNMPv2-MIB::sysName.0
-SNMP_SYS_LOCATION_OID=".1.3.6.1.2.1.1.6.0"                  # SNMPv2-MIB::sysLocation.0
-DOCSIS_CAPABILITY_OID=".1.3.6.1.2.1.10.127.1.1.5.0"         # DOCS-IF-MIB::docsIfDocsisBaseCapability.0
+SNMP_SYS_DESCR_OID=".1.3.6.1.2.1.1.1.0"                             # SNMPv2-MIB::sysDescr.0
+SNMP_SYS_OBJECTID_OID=".1.3.6.1.2.1.1.2.0"                          # SNMPv2-MIB::sysObjectID.0
+SNMP_SYS_UPTIME_OID=".1.3.6.1.2.1.1.3.0"                            # DISMAN-EVENT-MIB::sysUpTimeInstance.0
+SNMP_SYS_CONTACT_OID=".1.3.6.1.2.1.1.4.0"                           # SNMPv2-MIB::sysContact.0
+SNMP_SYS_NAME_OID=".1.3.6.1.2.1.1.5.0"                              # SNMPv2-MIB::sysName.0
+SNMP_SYS_LOCATION_OID=".1.3.6.1.2.1.1.6.0"                          # SNMPv2-MIB::sysLocation.0
 
-CM_SW_SERVER_OID=".1.3.6.1.2.1.69.1.3.1.0"                  # DOCS-CABLE-DEVICE-MIB::docsDevSwServer.0
-CM_SW_FWFILE_OID=".1.3.6.1.2.1.69.1.3.2.0"                  # DOCS-CABLE-DEVICE-MIB::docsDevSwFilename.0
-CM_SW_ADMIN_STATUS_OID=".1.3.6.1.2.1.69.1.3.3.0"            # DOCS-CABLE-DEVICE-MIB::docsDevSwAdminStatus.0
-CM_SW_OPER_STATUS_OID=".1.3.6.1.2.1.69.1.3.4.0"             # DOCS-CABLE-DEVICE-MIB::docsDevSwOperStatus.0
-CM_SW_VERSION_OID=".1.3.6.1.2.1.69.1.3.5.0"                 # DOCS-CABLE-DEVICE-MIB::docsDevSwCurrentVers.0
-CM_SW_SVR_ADDR_OID=".1.3.6.1.2.1.69.1.3.6.0"                # DOCS-CABLE-DEVICE-MIB::docsDevSwServerAddressType.0
-CM_SW_SVR_TYPE_OID=".1.3.6.1.2.1.69.1.3.7.0"                # DOCS-CABLE-DEVICE-MIB::docsDevSwServerAddress.0
-CM_SW_SVR_TRANSP_OID=".1.3.6.1.2.1.69.1.3.8.0"              # DOCS-CABLE-DEVICE-MIB::docsDevSwServerTransportProtocol.0
+SNMP_IF_DESCR=".1.3.6.1.2.1.2.2.1.2"                                # IF-MIB::ifDescr
+SNMP_IF_NAME=".1.3.6.1.2.1.31.1.1.1.1"                              # IF-MIB::ifName
+SNMP_IF_ALIAS=".1.3.6.1.2.1.31.1.1.1.18"                            # IF-MIB::ifAlias
+
+DOCSIS_CAPABILITY_OID=".1.3.6.1.2.1.10.127.1.1.5.0"                 # DOCS-IF-MIB::docsIfDocsisBaseCapability.0
+
+CM_SW_SERVER_OID=".1.3.6.1.2.1.69.1.3.1.0"                          # DOCS-CABLE-DEVICE-MIB::docsDevSwServer.0
+CM_SW_FWFILE_OID=".1.3.6.1.2.1.69.1.3.2.0"                          # DOCS-CABLE-DEVICE-MIB::docsDevSwFilename.0
+CM_SW_ADMIN_STATUS_OID=".1.3.6.1.2.1.69.1.3.3.0"                    # DOCS-CABLE-DEVICE-MIB::docsDevSwAdminStatus.0
+CM_SW_OPER_STATUS_OID=".1.3.6.1.2.1.69.1.3.4.0"                     # DOCS-CABLE-DEVICE-MIB::docsDevSwOperStatus.0
+CM_SW_VERSION_OID=".1.3.6.1.2.1.69.1.3.5.0"                         # DOCS-CABLE-DEVICE-MIB::docsDevSwCurrentVers.0
+CM_SW_SVR_ADDR_OID=".1.3.6.1.2.1.69.1.3.6.0"                        # DOCS-CABLE-DEVICE-MIB::docsDevSwServerAddressType.0
+CM_SW_SVR_TYPE_OID=".1.3.6.1.2.1.69.1.3.7.0"                        # DOCS-CABLE-DEVICE-MIB::docsDevSwServerAddress.0
+CM_SW_SVR_TRANSP_OID=".1.3.6.1.2.1.69.1.3.8.0"                      # DOCS-CABLE-DEVICE-MIB::docsDevSwServerTransportProtocol.0
 
 CMTS_SYSDESCR=`f_snmpget_string "${CMTS_SNMP_COMMUNITY}" "${CMTS_IPADDR}" "${SNMP_SYS_DESCR_OID}" | head -1`
 CMTS_SYSNAME=`f_snmpget_string "${CMTS_SNMP_COMMUNITY}" "${CMTS_IPADDR}" "${SNMP_SYS_NAME_OID}"`
@@ -167,25 +172,39 @@ if [ "no${CM_INDEX}" == "no" ]; then
     exit 2
 fi
 
-CM_IPADDR_OID=".1.3.6.1.2.1.10.127.1.3.3.1.3.${CM_INDEX}"   # DOCS-IF-MIB::docsIfCmtsCmStatusIpAddress.X
+CM_CMTS_DS_CHN_IFINDEX_OID=".1.3.6.1.2.1.10.127.1.3.3.1.4.${CM_INDEX}"  # DOCS-IF-MIB::docsIfCmtsCmStatusDownChannelIfIndex
+CM_CMTS_US_CHN_IFINDEX_OID=".1.3.6.1.2.1.10.127.1.3.3.1.5.${CM_INDEX}"  # DOCS-IF-MIB::docsIfCmtsCmStatusUpChannelIfIndex
 
-CM_RF_DS_OID=".1.3.6.1.2.1.10.127.1.1.1.1.6.3"              # DOCS-IF-MIB::docsIfDownChannelPower.3
-CM_RF_DS_OID_D3=".1.3.6.1.2.1.10.127.1.1.1.1.6"             # DOCS-IF3-MIB::docsIfDownChannelPower.Y
+CM_IPADDR_OID=".1.3.6.1.2.1.10.127.1.3.3.1.3.${CM_INDEX}"           # DOCS-IF-MIB::docsIfCmtsCmStatusIpAddress.X
 
-CM_RF_US_OID=".1.3.6.1.2.1.10.127.1.2.2.1.3.2"              # DOCS-IF-MIB::docsIfCmStatusTxPower.2
-CM_RF_US_OID_D3=".1.3.6.1.4.1.4491.2.1.20.1.2.1.1"          # DOCS-IF3-MIB::docsIf3CmStatusUsTxPower.Y
+CM_RF_DS_OID=".1.3.6.1.2.1.10.127.1.1.1.1.6.3"                      # DOCS-IF-MIB::docsIfDownChannelPower.3
+CM_RF_DS_OID_D3=".1.3.6.1.2.1.10.127.1.1.1.1.6"                     # DOCS-IF3-MIB::docsIfDownChannelPower.Y
 
-CM_SNR_DS_OID=".1.3.6.1.2.1.10.127.1.1.4.1.5.3"             # DOCS-IF-MIB::docsIfSigQSignalNoise.3
-CM_SNR_DS_OID_D3=".1.3.6.1.2.1.10.127.1.1.4.1.5"            # DOCS-IF-MIB::docsIfSigQSignalNoise.Y
+CM_RF_US_OID=".1.3.6.1.2.1.10.127.1.2.2.1.3.2"                      # DOCS-IF-MIB::docsIfCmStatusTxPower.2
+CM_RF_US_OID_D3=".1.3.6.1.4.1.4491.2.1.20.1.2.1.1"                  # DOCS-IF3-MIB::docsIf3CmStatusUsTxPower.Y
 
-CM_SNR_US_OID=".1.3.6.1.2.1.10.127.1.3.3.1.13.${CM_INDEX}"  # DOCS-IF-MIB::docsIfCmtsCmStatusSignalNoise.X
+CM_SNR_DS_OID=".1.3.6.1.2.1.10.127.1.1.4.1.5.3"                     # DOCS-IF-MIB::docsIfSigQSignalNoise.3
+CM_SNR_DS_OID_D3=".1.3.6.1.2.1.10.127.1.1.4.1.5"                    # DOCS-IF-MIB::docsIfSigQSignalNoise.Y
+
+CM_SNR_US_OID=".1.3.6.1.2.1.10.127.1.3.3.1.13.${CM_INDEX}"          # DOCS-IF-MIB::docsIfCmtsCmStatusSignalNoise.X
 CM_SNR_US_OID_D3=".1.3.6.1.4.1.4491.2.1.20.1.4.1.4.${CM_INDEX}"     # DOCS-IF3-MIB::docsIf3CmtsCmUsStatusSignalNoise.X
 
 CM_IP4ADDR_OID_D3=".1.3.6.1.4.1.4491.2.1.20.1.3.1.5.${CM_INDEX}"    # DOCS-IF3-MIB::docsIf3CmtsCmRegStatusIPv4Addr.X
 CM_IP6ADDR_OID_D3=".1.3.6.1.4.1.4491.2.1.20.1.3.1.3.${CM_INDEX}"    # DOCS-IF3-MIB::docsIf3CmtsCmRegStatusIPv6Addr.X
 
 # Reading Values
-CM_IP4ADDR=`f_snmpget_string "${CMTS_SNMP_COMMUNITY}" "${CMTS_IPADDR}" "${CM_IPADDR_OID}" | sed -e 's,[^0-9\.],,g'`
+CM_CMTS_DS_CHN_IFINDEX=`f_snmpget_enum "${CMTS_SNMP_COMMUNITY}" "${CMTS_IPADDR}" "${CM_CMTS_DS_CHN_IFINDEX_OID}" | sed -e 's,[^0-9],,g'`
+CM_CMTS_US_CHN_IFINDEX=`f_snmpget_enum "${CMTS_SNMP_COMMUNITY}" "${CMTS_IPADDR}" "${CM_CMTS_US_CHN_IFINDEX_OID}" | sed -e 's,[^0-9],,g'`
+
+CM_CMTS_DS_CHN_IFNAME=`f_snmpget_string "${CMTS_SNMP_COMMUNITY}" "${CMTS_IPADDR}" "${SNMP_IF_NAME}.${CM_CMTS_DS_CHN_IFINDEX}"`
+CM_CMTS_DS_CHN_IFALIAS=`f_snmpget_string "${CMTS_SNMP_COMMUNITY}" "${CMTS_IPADDR}" "${SNMP_IF_ALIAS}.${CM_CMTS_DS_CHN_IFINDEX}"`
+CM_CMTS_DS_CHN_IFDESCR=`f_snmpget_string "${CMTS_SNMP_COMMUNITY}" "${CMTS_IPADDR}" "${SNMP_IF_DESCR}.${CM_CMTS_DS_CHN_IFINDEX}"`
+
+CM_CMTS_US_CHN_IFNAME=`f_snmpget_string "${CMTS_SNMP_COMMUNITY}" "${CMTS_IPADDR}" "${SNMP_IF_NAME}.${CM_CMTS_US_CHN_IFINDEX}"`
+CM_CMTS_US_CHN_IFALIAS=`f_snmpget_string "${CMTS_SNMP_COMMUNITY}" "${CMTS_IPADDR}" "${SNMP_IF_ALIAS}.${CM_CMTS_US_CHN_IFINDEX}"`
+CM_CMTS_US_CHN_IFDESCR=`f_snmpget_string "${CMTS_SNMP_COMMUNITY}" "${CMTS_IPADDR}" "${SNMP_IF_DESCR}.${CM_CMTS_US_CHN_IFINDEX}"`
+
+CM_IP4ADDR=`f_snmpget_string "${CMTS_SNMP_COMMUNITY}" "${CMTS_IPADDR}" "${CM_IPADDR_OID}" | grep -vi '^no such' | sed -e 's,[^0-9\.],,g'`
 CM_IP6ADDR=`f_snmpget_string "${CMTS_SNMP_COMMUNITY}" "${CMTS_IPADDR}" "${CM_IP6ADDR_OID_D3}" | grep -vi '^no such' | sed -e 's,[^0-9a-f\:],,g'`
 
 if [ "no${CM_IP6ADDR}" != "no" ]; then
@@ -242,16 +261,18 @@ case $CM_DOCSIS_CAPABILITY in
         ;;
     *)
         CM_DOCSIS_CAPABILITY=Unknown
-        CM_D3_BONDING=1
         ;;
 esac
 
 if [ ${CM_D3_BONDING} -eq 0 ]; then
+
     CM_RF_DS=`f_snmpget_enum "${CM_SNMP_COMMUNITY}" ${CM_IPADDR} ${CM_RF_DS_OID} | awk '{printf "%0.1f",$1/10}'`
     CM_RF_US=`f_snmpget_enum "${CM_SNMP_COMMUNITY}" ${CM_IPADDR} ${CM_RF_US_OID} | awk '{printf "%0.1f",$1/10}'`
     CM_SNR_DS=`f_snmpget_enum "${CM_SNMP_COMMUNITY}" ${CM_IPADDR} ${CM_SNR_DS_OID} | awk '{printf "%0.1f",$1/10}'`
     CM_SNR_US=`f_snmpget_enum "${CMTS_SNMP_COMMUNITY}" ${CMTS_IPADDR} ${CM_SNR_US_OID} | awk '{printf "%0.1f",$1/10}'`
+
 else
+
     CM_RF_DS_DA=`f_snmpgetnext_enum "${CM_SNMP_COMMUNITY}" "${CM_IPADDR}" "${CM_RF_DS_OID_D3}" | grep "^${CM_RF_DS_OID_D3}\." | grep -vi 'no such' | awk '{printf "%s %0.1f",$1,$2/10}'`
     while [ "no${CM_RF_DS_DA}" != "no" ]; do
         CM_RFP_DS_BONDING=$[ ${CM_RFP_DS_BONDING} + 1 ]
@@ -293,6 +314,7 @@ else
             CM_SNR_US_B[ ${I} ]=`echo "${CM_SNR_US_B[ ${I} ]:-    }" | awk '{printf "%4s",$1}'`
         done
     fi
+
 fi
 
 # Get Vendor / Model / Firmware from CM
@@ -363,6 +385,14 @@ cat << EOF
 CMTS System Description:  ${CMTS_SYSDESCR}
 CMTS System Name:         ${CMTS_SYSNAME}
 CMTS DOCSIS Capability:   ${CMTS_DOCSIS_CAPABILITY}
+
+### Downstream Channel
+Channel Name (Alias):     ${CM_CMTS_DS_CHN_IFNAME:-N/A} (${CM_CMTS_DS_CHN_IFALIAS:-N/A})
+Channel Description:      ${CM_CMTS_DS_CHN_IFDESCR:-N/A}
+
+### Upstream Channel
+Channel Name (Alias):     ${CM_CMTS_US_CHN_IFNAME:-N/A} (${CM_CMTS_US_CHN_IFALIAS:-N/A})
+Channel Description:      ${CM_CMTS_US_CHN_IFDESCR:-N/A}
 
 ### Cable Modem
 CM DOCSIS Capability:     ${CM_DOCSIS_CAPABILITY}
