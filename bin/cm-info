@@ -21,6 +21,30 @@ OPTIONS:
 EOF
 }
 
+f_snmpget_enum()
+{
+    L_COMMUNITY=${1}
+    L_ADDR=${2}
+    L_OID=${3}
+    snmpget -v2c -c "${L_COMMUNITY}" -Ih -OnvqU -m all "${L_ADDR}" "${L_OID}" 2>/dev/null
+}
+
+f_snmpget_string()
+{
+    L_COMMUNITY=${1}
+    L_ADDR=${2}
+    L_OID=${3}
+    snmpget -v2c -c "${L_COMMUNITY}" -Onvq -m all "${L_ADDR}" "${L_OID}" 2>/dev/null
+}
+
+f_snmpgetnext_enum()
+{
+    L_COMMUNITY=${1}
+    L_ADDR=${2}
+    L_OID=${3}
+    snmpget -v2c -c "${L_COMMUNITY}" -Ih -OnqU -m all "${L_ADDR}" "${L_OID}" 2>/dev/null
+}
+
 f_ipv6_expand()
 {
     L_IPV6=`echo "${1}" | tr '[:upper:]' '[:lower:]' | sed -e 's,[^a-f0-9\:],,g'`
@@ -106,11 +130,11 @@ CM_SW_SVR_ADDR_OID=".1.3.6.1.2.1.69.1.3.6.0"                # DOCS-CABLE-DEVICE-
 CM_SW_SVR_TYPE_OID=".1.3.6.1.2.1.69.1.3.7.0"                # DOCS-CABLE-DEVICE-MIB::docsDevSwServerAddress.0
 CM_SW_SVR_TRANSP_OID=".1.3.6.1.2.1.69.1.3.8.0"              # DOCS-CABLE-DEVICE-MIB::docsDevSwServerTransportProtocol.0
 
-CMTS_SYSDESCR=`snmpget -v 2c -c "${CMTS_SNMP_COMMUNITY}" -m all -Onvq "${CMTS_IPADDR}" ${SNMP_SYS_DESCR_OID} | head -1`
-CMTS_SYSNAME=`snmpget -v 2c -c "${CMTS_SNMP_COMMUNITY}" -m all -Onvq "${CMTS_IPADDR}" ${SNMP_SYS_NAME_OID}`
+CMTS_SYSDESCR=`f_snmpget_string "${CMTS_SNMP_COMMUNITY}" "${CMTS_IPADDR}" "${SNMP_SYS_DESCR_OID}" | head -1`
+CMTS_SYSNAME=`f_snmpget_string "${CMTS_SNMP_COMMUNITY}" "${CMTS_IPADDR}" "${SNMP_SYS_NAME_OID}"`
 
 CMTS_D3_BONDING=0
-CMTS_DOCSIS_CAPABILITY=`snmpget -v2c -c "${CMTS_SNMP_COMMUNITY}" -m all -Ih -OnvqU "${CMTS_IPADDR}" "${DOCSIS_CAPABILITY_OID}"`
+CMTS_DOCSIS_CAPABILITY=`f_snmpget_enum "${CMTS_SNMP_COMMUNITY}" "${CMTS_IPADDR}" "${DOCSIS_CAPABILITY_OID}"`
 case $CMTS_DOCSIS_CAPABILITY in
     docsis10|1)
         CMTS_DOCSIS_CAPABILITY=1.0
@@ -136,7 +160,7 @@ case $CMTS_DOCSIS_CAPABILITY in
 esac
 
 CM_INDEX_OID=".1.3.6.1.2.1.10.127.1.3.7.1.2.${CM_MAC_OID}"
-CM_INDEX=`snmpget -v2c -c "${CMTS_SNMP_COMMUNITY}" -m all -Onvq "${CMTS_IPADDR}" "${CM_INDEX_OID}" | sed -e 's,[^0-9],,g'`
+CM_INDEX=`f_snmpget_string "${CMTS_SNMP_COMMUNITY}" "${CMTS_IPADDR}" "${CM_INDEX_OID}" | sed -e 's,[^0-9],,g'`
 
 if [ "no${CM_INDEX}" == "no" ]; then
     echo "ERROR: Could not retreive Cable Modem ifIndex from CMTS for ${CM_MAC:0:4}.${CM_MAC:4:4}.${CM_MAC:8:4}. Exiting..."
@@ -161,8 +185,9 @@ CM_IP4ADDR_OID_D3=".1.3.6.1.4.1.4491.2.1.20.1.3.1.5.${CM_INDEX}"    # DOCS-IF3-M
 CM_IP6ADDR_OID_D3=".1.3.6.1.4.1.4491.2.1.20.1.3.1.3.${CM_INDEX}"    # DOCS-IF3-MIB::docsIf3CmtsCmRegStatusIPv6Addr.X
 
 # Reading Values
-CM_IP4ADDR=`snmpget -v2c -c "${CMTS_SNMP_COMMUNITY}" -m all -Onvq "${CMTS_IPADDR}" "${CM_IPADDR_OID}" | sed -e 's,[^0-9\.],,g'`
-CM_IP6ADDR=`snmpget -v2c -c "${CMTS_SNMP_COMMUNITY}" -m all -Onvq "${CMTS_IPADDR}" "${CM_IP6ADDR_OID_D3}" | grep -vi '^no such' | sed -e 's,[^0-9a-f\:],,g'`
+CM_IP4ADDR=`f_snmpget_string "${CMTS_SNMP_COMMUNITY}" "${CMTS_IPADDR}" "${CM_IPADDR_OID}" | sed -e 's,[^0-9\.],,g'`
+CM_IP6ADDR=`f_snmpget_string "${CMTS_SNMP_COMMUNITY}" "${CMTS_IPADDR}" "${CM_IP6ADDR_OID_D3}" | grep -vi '^no such' | sed -e 's,[^0-9a-f\:],,g'`
+
 if [ "no${CM_IP6ADDR}" != "no" ]; then
     CM_IPXADDR=`f_ipv6_expand "${CM_IP6ADDR}"`
     CM_IP6ADDR="${CM_IPXADDR}"
@@ -171,7 +196,7 @@ fi
 if [ "no${CM_IP4ADDR}" != "no" ] && [ "no${CM_IP4ADDR}" != "no0.0.0.0" ]; then
     CM_IPADDR=${CM_IP4ADDR}
 else
-    CM_IP4ADDR=`snmpget -v2c -c "${CMTS_SNMP_COMMUNITY}" -m all -Onvq "${CMTS_IPADDR}" "${CM_IP4ADDR_OID_D3}" | sed -e 's,[^0-9\.],,g'`
+    CM_IP4ADDR=`f_snmpget_string "${CMTS_SNMP_COMMUNITY}" "${CMTS_IPADDR}" "${CM_IP4ADDR_OID_D3}" | sed -e 's,[^0-9\.],,g'`
 
     if [ "no${CM_IP4ADDR}" != "no" ] && [ "no${CM_IP4ADDR}" != "no0.0.0.0" ]; then
         CM_IPADDR=${CM_IP4ADDR}
@@ -196,7 +221,7 @@ CM_SNR_DS_BONDING=0
 CM_SNR_US_BONDING=0
 
 CM_D3_BONDING=0
-CM_DOCSIS_CAPABILITY=`snmpget -v2c -c "${CM_SNMP_COMMUNITY}" -m all -Ih -OnvqU "${CM_IPADDR}" "${DOCSIS_CAPABILITY_OID}"`
+CM_DOCSIS_CAPABILITY=`f_snmpget_enum "${CM_SNMP_COMMUNITY}" "${CM_IPADDR}" "${DOCSIS_CAPABILITY_OID}"`
 case $CM_DOCSIS_CAPABILITY in
     docsis10|1)
         CM_DOCSIS_CAPABILITY=1.0
@@ -222,56 +247,56 @@ case $CM_DOCSIS_CAPABILITY in
 esac
 
 if [ ${CM_D3_BONDING} -eq 0 ]; then
-    CM_RF_DS=`snmpget -v2c -c "${CM_SNMP_COMMUNITY}" -m all -Ih -OnvqU ${CM_IPADDR} ${CM_RF_DS_OID} | awk '{printf "%0.1f",$1/10}' 2>/dev/null`
-    CM_RF_US=`snmpget -v2c -c "${CM_SNMP_COMMUNITY}" -m all -Ih -OnvqU ${CM_IPADDR} ${CM_RF_US_OID} | awk '{printf "%0.1f",$1/10}' 2>/dev/null`
-    CM_SNR_DS=`snmpget -v2c -c "${CM_SNMP_COMMUNITY}" -m all -Ih -OnvqU ${CM_IPADDR} ${CM_SNR_DS_OID} | awk '{printf "%0.1f",$1/10}' 2>/dev/null`
-    CM_SNR_US=`snmpget -v2c -c "${CMTS_SNMP_COMMUNITY}" -m all -Ih -OnvqU ${CMTS_IPADDR} ${CM_SNR_US_OID} | awk '{printf "%0.1f",$1/10}' 2>/dev/null`
+    CM_RF_DS=`f_snmpget_enum "${CM_SNMP_COMMUNITY}" ${CM_IPADDR} ${CM_RF_DS_OID} | awk '{printf "%0.1f",$1/10}'`
+    CM_RF_US=`f_snmpget_enum "${CM_SNMP_COMMUNITY}" ${CM_IPADDR} ${CM_RF_US_OID} | awk '{printf "%0.1f",$1/10}'`
+    CM_SNR_DS=`f_snmpget_enum "${CM_SNMP_COMMUNITY}" ${CM_IPADDR} ${CM_SNR_DS_OID} | awk '{printf "%0.1f",$1/10}'`
+    CM_SNR_US=`f_snmpget_enum "${CMTS_SNMP_COMMUNITY}" ${CMTS_IPADDR} ${CM_SNR_US_OID} | awk '{printf "%0.1f",$1/10}'`
 else
-    CM_RF_DS_DA=`snmpgetnext -v2c -c "${CM_SNMP_COMMUNITY}" -m all -Ih -OnqU ${CM_IPADDR} ${CM_RF_DS_OID_D3} | grep "^${CM_RF_DS_OID_D3}\." | grep -vi 'no such' | awk '{printf "%s %0.1f",$1,$2/10}' 2>/dev/null`
+    CM_RF_DS_DA=`f_snmpgetnext_enum "${CM_SNMP_COMMUNITY}" "${CM_IPADDR}" "${CM_RF_DS_OID_D3}" | grep "^${CM_RF_DS_OID_D3}\." | grep -vi 'no such' | awk '{printf "%s %0.1f",$1,$2/10}'`
     while [ "no${CM_RF_DS_DA}" != "no" ]; do
         CM_RFP_DS_BONDING=$[ ${CM_RFP_DS_BONDING} + 1 ]
         CM_RFP_DS_B[ ${CM_RFP_DS_BONDING} ]=`echo "${CM_RF_DS_DA}" | awk '{printf "%4s",$2}'`
         CM_RF_DS_OID_D3_LAST=`echo "${CM_RF_DS_DA}" | awk '{print $1}'`
-        CM_RF_DS_DA=`snmpgetnext -v2c -c "${CM_SNMP_COMMUNITY}" -m all -Ih -OnqU ${CM_IPADDR} ${CM_RF_DS_OID_D3_LAST} | grep "^${CM_RF_DS_OID_D3}\." | grep -vi 'no such' | awk '{printf "%s %0.1f",$1,$2/10}' 2>/dev/null`
+        CM_RF_DS_DA=`f_snmpgetnext_enum "${CM_SNMP_COMMUNITY}" "${CM_IPADDR}" "${CM_RF_DS_OID_D3_LAST}" | grep "^${CM_RF_DS_OID_D3}\." | grep -vi 'no such' | awk '{printf "%s %0.1f",$1,$2/10}'`
     done
 
-    CM_RF_US_DA=`snmpgetnext -v2c -c "${CM_SNMP_COMMUNITY}" -m all -Ih -OnqU ${CM_IPADDR} ${CM_RF_US_OID_D3} | grep "^${CM_RF_US_OID_D3}\." | grep -vi 'no such' | awk '{printf "%s %0.1f",$1,$2/10}' 2>/dev/null`
+    CM_RF_US_DA=`f_snmpgetnext_enum "${CM_SNMP_COMMUNITY}" "${CM_IPADDR}" "${CM_RF_US_OID_D3}" | grep "^${CM_RF_US_OID_D3}\." | grep -vi 'no such' | awk '{printf "%s %0.1f",$1,$2/10}'`
     while [ "no${CM_RF_US_DA}" != "no" ]; do
         CM_RFP_US_BONDING=$[ ${CM_RFP_US_BONDING} + 1 ]
         CM_RFP_US_B[ ${CM_RFP_US_BONDING} ]=`echo "${CM_RF_US_DA}" | awk '{printf "%4s",$2}'`
         CM_RF_US_OID_D3_LAST=`echo "${CM_RF_US_DA}" | awk '{print $1}'`
-        CM_RF_US_DA=`snmpgetnext -v2c -c "${CM_SNMP_COMMUNITY}" -m all -Ih -OnqU ${CM_IPADDR} ${CM_RF_US_OID_D3_LAST} | grep "^${CM_RF_US_OID_D3}\." | grep -vi 'no such' | awk '{printf "%s %0.1f",$1,$2/10}' 2>/dev/null`
+        CM_RF_US_DA=`f_snmpgetnext_enum "${CM_SNMP_COMMUNITY}" "${CM_IPADDR}" "${CM_RF_US_OID_D3_LAST}" | grep "^${CM_RF_US_OID_D3}\." | grep -vi 'no such' | awk '{printf "%s %0.1f",$1,$2/10}'`
     done
 
-    CM_SNR_DS_DA=`snmpgetnext -v2c -c "${CMTS_SNMP_COMMUNITY}" -m all -Ih -OnqU ${CM_IPADDR} ${CM_SNR_DS_OID_D3} | grep "^${CM_SNR_DS_OID_D3}\." | grep -vi 'no such' | awk '{printf "%s %0.1f",$1,$2/10}' 2>/dev/null`
+    CM_SNR_DS_DA=`f_snmpgetnext_enum "${CMTS_SNMP_COMMUNITY}" "${CM_IPADDR}" "${CM_SNR_DS_OID_D3}" | grep "^${CM_SNR_DS_OID_D3}\." | grep -vi 'no such' | awk '{printf "%s %0.1f",$1,$2/10}'`
     while [ "no${CM_SNR_DS_DA}" != "no" ]; do
         CM_SNR_DS_BONDING=$[ ${CM_SNR_DS_BONDING} + 1 ]
         CM_SNR_DS_B[ ${CM_SNR_DS_BONDING} ]=`echo "${CM_SNR_DS_DA}" | awk '{printf "%4s",$2}'`
         CM_SNR_DS_OID_D3_LAST=`echo "${CM_SNR_DS_DA}" | awk '{print $1}'`
-        CM_SNR_DS_DA=`snmpgetnext -v2c -c "${CMTS_SNMP_COMMUNITY}" -m all -Ih -OnqU ${CM_IPADDR} ${CM_SNR_DS_OID_D3_LAST} | grep "^${CM_SNR_DS_OID_D3}\." | grep -vi 'no such' | awk '{printf "%s %0.1f",$1,$2/10}' 2>/dev/null`
+        CM_SNR_DS_DA=`f_snmpgetnext_enum "${CMTS_SNMP_COMMUNITY}" "${CM_IPADDR}" "${CM_SNR_DS_OID_D3_LAST}" | grep "^${CM_SNR_DS_OID_D3}\." | grep -vi 'no such' | awk '{printf "%s %0.1f",$1,$2/10}'`
     done
 
-    CM_SNR_US_DA=`snmpgetnext -v2c -c "${CMTS_SNMP_COMMUNITY}" -m all -Ih -OnqU ${CMTS_IPADDR} ${CM_SNR_US_OID_D3} | grep "^${CM_SNR_US_OID_D3}\." | grep -vi 'no such' | awk '{printf "%s %0.1f",$1,$2/10}' 2>/dev/null`
+    CM_SNR_US_DA=`f_snmpgetnext_enum "${CMTS_SNMP_COMMUNITY}" "${CMTS_IPADDR}" "${CM_SNR_US_OID_D3}" | grep "^${CM_SNR_US_OID_D3}\." | grep -vi 'no such' | awk '{printf "%s %0.1f",$1,$2/10}'`
     if [ "no${CM_SNR_US_DA}" != "no" ]; then
         while [ "no${CM_SNR_US_DA}" != "no" ]; do
             CM_SNR_US_BONDING=$[ ${CM_SNR_US_BONDING} + 1 ]
             CM_SNR_US_B[ ${CM_SNR_US_BONDING} ]=`echo "${CM_SNR_US_DA}" | awk '{printf "%4s",$2}'`
             CM_SNR_US_OID_D3_LAST=`echo "${CM_SNR_US_DA}" | awk '{print $1}'`
-            CM_SNR_US_DA=`snmpgetnext -v2c -c "${CMTS_SNMP_COMMUNITY}" -m all -Ih -OnqU ${CMTS_IPADDR} ${CM_SNR_US_OID_D3_LAST} | grep "^${CM_SNR_US_OID_D3}\." | grep -vi 'no such' | awk '{printf "%s %0.1f",$1,$2/10}' 2>/dev/null`
+            CM_SNR_US_DA=`f_snmpgetnext_enum "${CMTS_SNMP_COMMUNITY}" "${CMTS_IPADDR}" "${CM_SNR_US_OID_D3_LAST}" | grep "^${CM_SNR_US_OID_D3}\." | grep -vi 'no such' | awk '{printf "%s %0.1f",$1,$2/10}'`
         done
     else
-        CM_SNR_US_B[1]=`snmpget -v2c -c "${CMTS_SNMP_COMMUNITY}" -m all -Ih -OnvqU ${CMTS_IPADDR} ${CM_SNR_US_OID_D3}.1 | awk '{printf "%0.1f",$1/10}' | sed -e 's,^0\.0$,,g' 2>/dev/null`
-        CM_SNR_US_B[2]=`snmpget -v2c -c "${CMTS_SNMP_COMMUNITY}" -m all -Ih -OnvqU ${CMTS_IPADDR} ${CM_SNR_US_OID_D3}.2 | awk '{printf "%0.1f",$1/10}' | sed -e 's,^0\.0$,,g' 2>/dev/null`
-        CM_SNR_US_B[3]=`snmpget -v2c -c "${CMTS_SNMP_COMMUNITY}" -m all -Ih -OnvqU ${CMTS_IPADDR} ${CM_SNR_US_OID_D3}.3 | awk '{printf "%0.1f",$1/10}' | sed -e 's,^0\.0$,,g' 2>/dev/null`
-        CM_SNR_US_B[4]=`snmpget -v2c -c "${CMTS_SNMP_COMMUNITY}" -m all -Ih -OnvqU ${CMTS_IPADDR} ${CM_SNR_US_OID_D3}.4 | awk '{printf "%0.1f",$1/10}' | sed -e 's,^0\.0$,,g' 2>/dev/null`
+        CM_SNR_US_B[1]=`f_snmpget_enum "${CMTS_SNMP_COMMUNITY}" "${CMTS_IPADDR}" "${CM_SNR_US_OID_D3}.1" | awk '{printf "%0.1f",$1/10}' | sed -e 's,^0\.0$,,g'`
+        CM_SNR_US_B[2]=`f_snmpget_enum "${CMTS_SNMP_COMMUNITY}" "${CMTS_IPADDR}" "${CM_SNR_US_OID_D3}.2" | awk '{printf "%0.1f",$1/10}' | sed -e 's,^0\.0$,,g'`
+        CM_SNR_US_B[3]=`f_snmpget_enum "${CMTS_SNMP_COMMUNITY}" "${CMTS_IPADDR}" "${CM_SNR_US_OID_D3}.3" | awk '{printf "%0.1f",$1/10}' | sed -e 's,^0\.0$,,g'`
+        CM_SNR_US_B[4]=`f_snmpget_enum "${CMTS_SNMP_COMMUNITY}" "${CMTS_IPADDR}" "${CM_SNR_US_OID_D3}.4" | awk '{printf "%0.1f",$1/10}' | sed -e 's,^0\.0$,,g'`
         for I in `seq 1 4`; do
-            CM_SNR_US_B[ $I ]=`echo "${CM_SNR_US_B[ $I ]:-    }" | awk '{printf "%4s",$1}'`
+            CM_SNR_US_B[ ${I} ]=`echo "${CM_SNR_US_B[ ${I} ]:-    }" | awk '{printf "%4s",$1}'`
         done
     fi
 fi
 
 # Get Vendor / Model / Firmware from CM
-CM_SYSDESCR=`snmpget -v 2c -c "${CM_SNMP_COMMUNITY}" -m all -Onvq "${CM_IPADDR}" .1.3.6.1.2.1.1.1.0 | grep '<<' 2>/dev/null`
+CM_SYSDESCR=`f_snmpget_string "${CM_SNMP_COMMUNITY}" "${CM_IPADDR}" "${SNMP_SYS_DESCR_OID}" | grep '<<'`
 CM_HWREV=`echo "${CM_SYSDESCR}" | sed -e 's,.*<<\(.*\)>>.*,\1,g' | sed -e 's,^.*[Hh][Ww]_[Rr][Ee][Vv]:,,g' | sed -e 's,;.*$,,g' | sed -e 's,^ ,,g' | sed -e 's, $,,g'`
 CM_VENDOR=`echo "${CM_SYSDESCR}" | sed -e 's,.*<<\(.*\)>>.*,\1,g' | sed -e 's,^.*[Vv][Ev][Nn][Dd][Oo][Rr]:,,g' | sed -e 's,;.*$,,g' | sed -e 's,^ ,,g' | sed -e 's, $,,g'`
 CM_ROM=`echo "${CM_SYSDESCR}" | sed -e 's,.*<<\(.*\)>>.*,\1,g' | sed -e 's,^.*[Bb][Oo][Oo][Tt][Rr]:,,g' | sed -e 's,;.*$,,g' | sed -e 's,^ ,,g' | sed -e 's, $,,g'`
@@ -279,10 +304,10 @@ CM_FIRM=`echo "${CM_SYSDESCR}" | sed -e 's,.*<<\(.*\)>>.*,\1,g' | sed -e 's,^.*[
 CM_MODEL=`echo "${CM_SYSDESCR}" | sed -e 's,.*<<\(.*\)>>.*,\1,g' | sed -e 's,^.*[Mm][Oo][Dd][Ee][Ll]:,,g' | sed -e 's,;.*$,,g' | sed -e 's,^ ,,g' | sed -e 's, $,,g'`
 
 # Status
-SW_ADMIN_STATUS=`snmpget -v 2c -c "${CM_SNMP_COMMUNITY}" -Ih -OnvqU -m all ${CM_IPADDR} ${CM_SW_ADMIN_STATUS_OID} 2>/dev/null`
-SW_OPER_STATUS=`snmpget -v 2c -c "${CM_SNMP_COMMUNITY}" -Ih -OnvqU -m all ${CM_IPADDR} ${CM_SW_OPER_STATUS_OID} 2>/dev/null`
+SW_ADMIN_STATUS=`f_snmpget_enum "${CM_SNMP_COMMUNITY}" "${CM_IPADDR}" "${CM_SW_ADMIN_STATUS_OID}"`
+SW_OPER_STATUS=`f_snmpget_enum "${CM_SNMP_COMMUNITY}" "${CM_IPADDR}" "${CM_SW_OPER_STATUS_OID}"`
 
-case $SW_ADMIN_STATUS in
+case ${SW_ADMIN_STATUS} in
     upgradeFromMgt|1)
         SW_ADMIN_STATUS_TXT="upgradeFromMgt(1)"
         SW_ADMIN_STATUS=1
@@ -301,7 +326,7 @@ case $SW_ADMIN_STATUS in
         ;;
 esac
 
-case $SW_OPER_STATUS in
+case ${SW_OPER_STATUS} in
     inProgress|1)
         SW_OPER_STATUS_TXT="inProgress(1)"
         SW_OPER_STATUS=1
