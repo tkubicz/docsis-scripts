@@ -21,25 +21,52 @@ OPTIONS:
 EOF
 }
 
+f_ipv6_expand()
+{
+    L_IPV6=`echo "${1}" | tr '[:upper:]' '[:lower:]' | sed -e 's,[^a-f0-9\:],,g'`
+    L_TMP0=`echo "${L_IPV6}" | grep '::'`
+    L_TMP1=`echo "${L_IPV6}" | sed -e 's,[^\:],,g' | wc -m | awk '{print $1}'`
+    if [ ${L_TMP1} -eq 1 ]; then
+        # Straight IPv6 address
+        L_IPV6=${L_IPV6:0:4}:${L_IPV6:4:4}:${L_IPV6:8:4}:${L_IPV6:12:4}:${L_IPV6:16:4}:${L_IPV6:20:4}:${L_IPV6:24:4}:${L_IPV6:28:4}
+        L_TMP0=`echo "${L_IPV6}" | grep '::'`
+        L_TMP1=`echo "${L_IPV6}" | sed -e 's,[^\:],,g' | wc -m | awk '{print $1}'`
+    fi
+
+    if [ "x${L_TMP0}" == "x" ]; then
+        L_BLKS=$[ 9 - ${L_TMP1} ]
+    else
+        L_BLKS=$[ 8 - ${L_TMP1} ]
+    fi
+
+    if [ $L_BLKS -lt 7 ]; then
+        L_FILL=`echo "${L_BLKS}" | awk '{for(i=0;i<=$1;i++)x=x""sprintf (":%4s", "0");gsub(/ /,"0",x);print x}'`
+        L_IPV6=`echo "${L_IPV6}" | sed 's,::,'${L_FILL}:',g'`
+    fi
+
+    L_RET=`echo "${L_IPV6}" | awk 'BEGIN{FS=":"}{for(i=1;i<=NF;i++)x=x""sprintf ("%4s:", $i);gsub(/ /,"0",x);print substr(x,0,39)}'`
+    echo ${L_RET:0:39}
+}
+
 while getopts “hr:k:m:c:” OPTION
 do
-    case $OPTION in
+    case ${OPTION} in
         h)
             usage
             exit 1
             ;;
         r)
-            CMTS_IPADDR=$OPTARG
+            CMTS_IPADDR=${OPTARG}
             ;;
         k)
-            CMTS_SNMP_COMMUNITY=$OPTARG
+            CMTS_SNMP_COMMUNITY=${OPTARG}
             ;;
         m)
-            CM_MAC=`echo "$OPTARG" | tr '[:upper:]' '[:lower:]' | sed -e 's,[^a-f0-9],,g'`
+            CM_MAC=`echo "${OPTARG}" | tr '[:upper:]' '[:lower:]' | sed -e 's,[^a-f0-9],,g'`
             CM_MAC_OID=`printf "%d.%d.%d.%d.%d.%d" 0x${CM_MAC:0:2} 0x${CM_MAC:2:2} 0x${CM_MAC:4:2} 0x${CM_MAC:6:2} 0x${CM_MAC:8:2} 0x${CM_MAC:10:2}`
             ;;
         c)
-            CM_SNMP_COMMUNITY=$OPTARG
+            CM_SNMP_COMMUNITY=${OPTARG}
             ;;
         f)
             CM_READ_FW=1
@@ -69,8 +96,15 @@ SNMP_SYS_CONTACT_OID=".1.3.6.1.2.1.1.4.0"                   # SNMPv2-MIB::sysCon
 SNMP_SYS_NAME_OID=".1.3.6.1.2.1.1.5.0"                      # SNMPv2-MIB::sysName.0
 SNMP_SYS_LOCATION_OID=".1.3.6.1.2.1.1.6.0"                  # SNMPv2-MIB::sysLocation.0
 DOCSIS_CAPABILITY_OID=".1.3.6.1.2.1.10.127.1.1.5.0"         # DOCS-IF-MIB::docsIfDocsisBaseCapability.0
+
+CM_SW_SERVER_OID=".1.3.6.1.2.1.69.1.3.1.0"                  # DOCS-CABLE-DEVICE-MIB::docsDevSwServer.0
+CM_SW_FWFILE_OID=".1.3.6.1.2.1.69.1.3.2.0"                  # DOCS-CABLE-DEVICE-MIB::docsDevSwFilename.0
 CM_SW_ADMIN_STATUS_OID=".1.3.6.1.2.1.69.1.3.3.0"            # DOCS-CABLE-DEVICE-MIB::docsDevSwAdminStatus.0
 CM_SW_OPER_STATUS_OID=".1.3.6.1.2.1.69.1.3.4.0"             # DOCS-CABLE-DEVICE-MIB::docsDevSwOperStatus.0
+CM_SW_VERSION_OID=".1.3.6.1.2.1.69.1.3.5.0"                 # DOCS-CABLE-DEVICE-MIB::docsDevSwCurrentVers.0
+CM_SW_SVR_ADDR_OID=".1.3.6.1.2.1.69.1.3.6.0"                # DOCS-CABLE-DEVICE-MIB::docsDevSwServerAddressType.0
+CM_SW_SVR_TYPE_OID=".1.3.6.1.2.1.69.1.3.7.0"                # DOCS-CABLE-DEVICE-MIB::docsDevSwServerAddress.0
+CM_SW_SVR_TRANSP_OID=".1.3.6.1.2.1.69.1.3.8.0"              # DOCS-CABLE-DEVICE-MIB::docsDevSwServerTransportProtocol.0
 
 CMTS_SYSDESCR=`snmpget -v 2c -c "${CMTS_SNMP_COMMUNITY}" -m all -Onvq "${CMTS_IPADDR}" ${SNMP_SYS_DESCR_OID} | head -1`
 CMTS_SYSNAME=`snmpget -v 2c -c "${CMTS_SNMP_COMMUNITY}" -m all -Onvq "${CMTS_IPADDR}" ${SNMP_SYS_NAME_OID}`
@@ -129,16 +163,19 @@ CM_IP6ADDR_OID_D3=".1.3.6.1.4.1.4491.2.1.20.1.3.1.3.${CM_INDEX}"    # DOCS-IF3-M
 # Reading Values
 CM_IP4ADDR=`snmpget -v2c -c "${CMTS_SNMP_COMMUNITY}" -m all -Onvq "${CMTS_IPADDR}" "${CM_IPADDR_OID}" | sed -e 's,[^0-9\.],,g'`
 CM_IP6ADDR=`snmpget -v2c -c "${CMTS_SNMP_COMMUNITY}" -m all -Onvq "${CMTS_IPADDR}" "${CM_IP6ADDR_OID_D3}" | grep -vi '^no such' | sed -e 's,[^0-9a-f\:],,g'`
+if [ "no${CM_IP6ADDR}" != "no" ]; then
+    CM_IPXADDR=`f_ipv6_expand "${CM_IP6ADDR}"`
+    CM_IP6ADDR="${CM_IPXADDR}"
+fi
 
 if [ "no${CM_IP4ADDR}" != "no" ] && [ "no${CM_IP4ADDR}" != "no0.0.0.0" ]; then
     CM_IPADDR=${CM_IP4ADDR}
 else
     CM_IP4ADDR=`snmpget -v2c -c "${CMTS_SNMP_COMMUNITY}" -m all -Onvq "${CMTS_IPADDR}" "${CM_IP4ADDR_OID_D3}" | sed -e 's,[^0-9\.],,g'`
-    # CM_IP6ADDR=`snmpget -v2c -c "${CMTS_SNMP_COMMUNITY}" -m all -Onvq "${CMTS_IPADDR}" "${CM_IP6ADDR_OID_D3}" | sed -e 's,[^0-9a-f\:],,g'`
 
     if [ "no${CM_IP4ADDR}" != "no" ] && [ "no${CM_IP4ADDR}" != "no0.0.0.0" ]; then
         CM_IPADDR=${CM_IP4ADDR}
-    elif [ "no${CM_IP6ADDR}" != "no" ] && [ "no${CM_IP6ADDR}" != "no0:0:0:0:0:0:0:0" ]; then
+    elif [ "no${CM_IP6ADDR}" != "no" ] && [ "no${CM_IP6ADDR}" != "no0000:0000:0000:0000:0000:0000:0000:0000" ]; then
         CM_IPADDR=udp6:${CM_IP6ADDR}
     else
         echo "ERROR: Could not retreive Cable Modem IP address for ${CM_MAC:0:4}.${CM_MAC:4:4}.${CM_MAC:8:4}. Exiting..."
@@ -149,7 +186,7 @@ fi
 if [ "no${CM_IP4ADDR}" == "no" ] || [ "no${CM_IP4ADDR}" == "no0.0.0.0" ]; then
     CM_IP4ADDR="No IPv4 Available"
 fi
-if [ "no${CM_IP6ADDR}" == "no" ] || [ "no${CM_IP6ADDR}" == "no0:0:0:0:0:0:0:0" ]; then
+if [ "no${CM_IP6ADDR}" == "no" ] || [ "no${CM_IP6ADDR}" == "no0000:0000:0000:0000:0000:0000:0000:0000" ]; then
     CM_IP6ADDR="No IPv6 Available"
 fi
 
@@ -242,8 +279,54 @@ CM_FIRM=`echo "${CM_SYSDESCR}" | sed -e 's,.*<<\(.*\)>>.*,\1,g' | sed -e 's,^.*[
 CM_MODEL=`echo "${CM_SYSDESCR}" | sed -e 's,.*<<\(.*\)>>.*,\1,g' | sed -e 's,^.*[Mm][Oo][Dd][Ee][Ll]:,,g' | sed -e 's,;.*$,,g' | sed -e 's,^ ,,g' | sed -e 's, $,,g'`
 
 # Status
-SW_ADMIN_STATUS=`snmpget -v 2c -c "${CM_SNMP_COMMUNITY}" -Ih -Onvq -m all ${CM_IPADDR} ${CM_SW_ADMIN_STATUS_OID} 2>/dev/null`
-SW_OPER_STATUS=`snmpget -v 2c -c "${CM_SNMP_COMMUNITY}" -Ih -Onvq -m all ${CM_IPADDR} ${CM_SW_OPER_STATUS_OID} 2>/dev/null`
+SW_ADMIN_STATUS=`snmpget -v 2c -c "${CM_SNMP_COMMUNITY}" -Ih -OnvqU -m all ${CM_IPADDR} ${CM_SW_ADMIN_STATUS_OID} 2>/dev/null`
+SW_OPER_STATUS=`snmpget -v 2c -c "${CM_SNMP_COMMUNITY}" -Ih -OnvqU -m all ${CM_IPADDR} ${CM_SW_OPER_STATUS_OID} 2>/dev/null`
+
+case $SW_ADMIN_STATUS in
+    upgradeFromMgt|1)
+        SW_ADMIN_STATUS_TXT="upgradeFromMgt(1)"
+        SW_ADMIN_STATUS=1
+        ;;
+    allowProvisioningUpgrade|2)
+        SW_ADMIN_STATUS_TXT="allowProvisioningUpgrade(2)"
+        SW_ADMIN_STATUS=2
+        ;;
+    ignoreProvisioningUpgrade|3)
+        SW_ADMIN_STATUS_TXT="ignoreProvisioningUpgrade(3)"
+        SW_ADMIN_STATUS=3
+        ;;
+    *)
+        SW_ADMIN_STATUS_TXT="unknown(-1)"
+        SW_ADMIN_STATUS=-1
+        ;;
+esac
+
+case $SW_OPER_STATUS in
+    inProgress|1)
+        SW_OPER_STATUS_TXT="inProgress(1)"
+        SW_OPER_STATUS=1
+        ;;
+    completeFromProvisioning|2)
+        SW_OPER_STATUS_TXT="completeFromProvisioning(2)"
+        SW_OPER_STATUS=2
+        ;;
+    completeFromMgt|3)
+        SW_OPER_STATUS_TXT="completeFromMgt(3)"
+        SW_OPER_STATUS=3
+        ;;
+    failed|4)
+        SW_OPER_STATUS_TXT="failed(4)"
+        SW_OPER_STATUS=4
+        ;;
+    other|5)
+        SW_OPER_STATUS_TXT="other(5)"
+        SW_OPER_STATUS=5
+        ;;
+    *)
+        SW_OPER_STATUS_TXT="unknown(-1)"
+        SW_OPER_STATUS=-1
+        ;;
+esac
 
 # Print Results
 printf "DONE!\n\n"
@@ -299,8 +382,8 @@ Software Version:         ${CM_FIRM:-N/A}
 Boot ROM Version:         ${CM_ROM:-N/A}
 
 ### Firmware Management
-Admin Status:             ${SW_ADMIN_STATUS:-N/A}
-Operational Status:       ${SW_OPER_STATUS:-N/A}
+Admin Status:             ${SW_ADMIN_STATUS_TXT}
+Operational Status:       ${SW_OPER_STATUS_TXT}
 
 EOF
 
