@@ -38,6 +38,12 @@ f_snmpset()
     snmpset -v2c -c "${CM_SNMP_COMMUNITY}" "${CM_IPADDR}" "${L_OID}" "${L_OID_TYPE}" "${L_OID_VALUE}"
 }
 
+f_snmpbulkset()
+{
+    L_VARS=${@}
+    snmpset -v2c -c "${CM_SNMP_COMMUNITY}" "${CM_IPADDR}" ${L_VARS}
+}
+
 f_snmpwalk()
 {
     L_OID=${1}
@@ -117,6 +123,7 @@ fi
 echo ""
 echo "### Initial settings"
 f_snmpwalk ".1.3.6.1.2.1.69.1.3"
+f_snmpwalk ".1.3.6.1.2.1.10.127.6.1.4"
 
 CONT=`read_var "Continue?" "n"`
 if [ "x${CONT}" == "xn" ]; then
@@ -125,11 +132,23 @@ fi
 
 echo ""
 echo "### Setting software upgrade..."
-f_snmpset ".1.3.6.1.2.1.69.1.3.1.0" "a" "${TFTP_SERVER}"    # DOCS-CABLE-DEVICE-MIB::docsDevSwServer.0
-f_snmpset ".1.3.6.1.2.1.69.1.3.2.0" "s" "${SW_FILENAME}"    # DOCS-CABLE-DEVICE-MIB::docsDevSwFilename.0
-f_snmpset ".1.3.6.1.2.1.69.1.3.6.0" "i" "${TFTP_SERVER_T}"  # DOCS-CABLE-DEVICE-MIB::docsDevSwServerAddressType.0
-f_snmpset ".1.3.6.1.2.1.69.1.3.7.0" "x" "${TFTP_SERVER_X}"  # DOCS-CABLE-DEVICE-MIB::docsDevSwServerAddress.0
-f_snmpset ".1.3.6.1.2.1.69.1.3.3.0" "i" "1"                 # DOCS-CABLE-DEVICE-MIB::docsDevSwAdminStatus.0
+# f_snmpset ".1.3.6.1.2.1.69.1.3.1.0" "a" "${TFTP_SERVER}"    # DOCS-CABLE-DEVICE-MIB::docsDevSwServer.0
+# f_snmpset ".1.3.6.1.2.1.69.1.3.2.0" "s" "${SW_FILENAME}"    # DOCS-CABLE-DEVICE-MIB::docsDevSwFilename.0
+# f_snmpset ".1.3.6.1.2.1.69.1.3.6.0" "i" "${TFTP_SERVER_T}"  # DOCS-CABLE-DEVICE-MIB::docsDevSwServerAddressType.0
+# f_snmpset ".1.3.6.1.2.1.69.1.3.7.0" "x" "${TFTP_SERVER_X}"  # DOCS-CABLE-DEVICE-MIB::docsDevSwServerAddress.0
+# f_snmpset ".1.3.6.1.2.1.69.1.3.3.0" "i" "1"                 # DOCS-CABLE-DEVICE-MIB::docsDevSwAdminStatus.0
+
+# DOCS-CABLE-DEVICE-MIB::docsDevSwServer.0
+# DOCS-CABLE-DEVICE-MIB::docsDevSwFilename.0
+# DOCS-CABLE-DEVICE-MIB::docsDevSwServerAddressType.0
+# DOCS-CABLE-DEVICE-MIB::docsDevSwServerAddress.0
+# DOCS-CABLE-DEVICE-MIB::docsDevSwAdminStatus.0
+f_snmpbulkset \
+    ".1.3.6.1.2.1.69.1.3.1.0" "a" "${TFTP_SERVER}"    \
+    ".1.3.6.1.2.1.69.1.3.2.0" "s" "${SW_FILENAME}"    \
+    ".1.3.6.1.2.1.69.1.3.6.0" "i" "${TFTP_SERVER_T}"  \
+    ".1.3.6.1.2.1.69.1.3.7.0" "x" "${TFTP_SERVER_X}"  \
+    ".1.3.6.1.2.1.69.1.3.3.0" "i" "1"
 
 CONT=w
 echo ""
@@ -148,9 +167,12 @@ while [ "x${CONT}" == "xw" ]; do
     fi
 done
 
-echo ""
-echo "### Rebooting device..."
-f_snmpset ".1.3.6.1.2.1.69.1.1.3.0" "i" "1"
+CONT=`read_var "Reboot device?" "n"`
+if [ "x${CONT}" == "xy" ]; then
+    echo ""
+    echo "### Rebooting device..."
+    f_snmpset ".1.3.6.1.2.1.69.1.1.3.0" "i" "1"
+fi
 
 echo ""
 
