@@ -238,7 +238,7 @@ CM_CMTS_US_CHN_IFALIAS=`f_snmpget_string "${CMTS_SNMP_COMMUNITY}" "${CMTS_IPADDR
 CM_CMTS_US_CHN_IFDESCR=`f_snmpget_string "${CMTS_SNMP_COMMUNITY}" "${CMTS_IPADDR}" "${SNMP_IF_DESCR}.${CM_CMTS_US_CHN_IFINDEX}"`
 
 CM_IP4ADDR=`f_snmpget_string "${CMTS_SNMP_COMMUNITY}" "${CMTS_IPADDR}" "${CM_IPADDR_OID}" | grep -vi '^no such' | sed -e 's,[^0-9\.],,g'`
-CM_IP6ADDR=`f_snmpget_string "${CMTS_SNMP_COMMUNITY}" "${CMTS_IPADDR}" "${CM_IP6ADDR_OID_D3}" | grep -vi '^no such' | sed -e 's,[^0-9a-f\:],,g'`
+CM_IP6ADDR=`f_snmpget_string "${CMTS_SNMP_COMMUNITY}" "${CMTS_IPADDR}" "${CM_IP6ADDR_OID_D3}" | grep -vi '^no such' | sed -e 's,[^0-9a-fA-F\:],,g'`
 
 if [ "no${CM_IP6ADDR}" != "no" ]; then
     CM_IPXADDR=`f_ipv6_expand "${CM_IP6ADDR}"`
