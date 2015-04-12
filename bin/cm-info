@@ -2,6 +2,7 @@
 
 CMTS_SNMP_COMMUNITY=public
 CM_SNMP_COMMUNITY=private
+CM_FORCE_IPV=4
 
 usage()
 {
@@ -17,6 +18,8 @@ OPTIONS:
     -k text     CMTS SNMP Community (default: ${CMTS_SNMP_COMMUNITY})
     -m mac      CM MAC address
     -c text     CM SNMP Community (default: ${CM_SNMP_COMMUNITY})
+    -4          Force usage of IPv4 to access Cable Modem (default)
+    -6          Force usage of IPv6 to access Cable Modem
 
 EOF
 }
@@ -93,7 +96,7 @@ f_ipv6_expand()
     echo ${L_RET:0:39}
 }
 
-while getopts “hr:k:m:c:” OPTION
+while getopts “hr:k:m:c:46” OPTION
 do
     case ${OPTION} in
         h)
@@ -115,6 +118,12 @@ do
             ;;
         f)
             CM_READ_FW=1
+            ;;
+        4)
+            CM_FORCE_IPV=4
+            ;;
+        6)
+            CM_FORCE_IPV=6
             ;;
         ?)
             usage
