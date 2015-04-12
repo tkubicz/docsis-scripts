@@ -1,0 +1,75 @@
+#!/usr/bin/env bash
+
+RFC_BASEDIR=~/Path/To/IETF
+
+usage()
+{
+cat << EOF
+
+usage: $0 options
+
+This script downloads RFCs from IETF.org.
+
+OPTIONS:
+    -h          Show this message.
+    -r number   RFC number (required).
+    -d path     Destination directory (default: ${RFC_BASEDIR}).
+
+EOF
+}
+
+while getopts “hr:d:” OPTION
+do
+    case $OPTION in
+        h)
+            usage
+            exit 1
+            ;;
+        r)
+            FILE_IN=$OPTARG
+            RFC_ID=`echo "${OPTARG}" | sed -e 's,[^0-9],,g'`
+            RFC_FMT=`printf "%04d" "${RFC_ID}"`
+            ;;
+        d)
+            RFC_BASEDIR=$OPTARG
+            ;;
+        ?)
+            usage
+            exit 0
+            ;;
+    esac
+done
+
+if [ "no${RFC_ID}" == "no" ]; then
+    usage
+    exit 0
+fi
+
+WGET=`which wget`
+CURL=`which curl`
+
+UA='Mozilla/5.0 (Macintosh; Intel Mac OS X 10.9; rv:30.0) Gecko/20100101 Firefox/30.0'
+
+URL_TEXT="http://www.ietf.org/rfc/rfc${RFC_ID}.txt"
+# URL_HTML="http://tools.ietf.org/html/${RFC_ID}"
+URL_HTML="http://tools.ietf.org/html/rfc${RFC_ID}"
+
+if [ "no${WGET}" != "no" ]; then
+
+    "${WGET}" -U "${UA}" -O "${RFC_BASEDIR}/rfc${RFC_FMT}.txt" "${URL_TEXT}"
+    "${WGET}" -U "${UA}" --convert-links -O "${RFC_BASEDIR}/rfc${RFC_FMT}.html" "${URL_HTML}"
+
+elif [ "no${CURL}" != "no" ]; then
+
+    "${CURL}" -A "${UA}" --location -o "${RFC_BASEDIR}/rfc${RFC_FMT}.txt"  "${URL_TEXT}"
+    "${CURL}" -A "${UA}" --location -o "${RFC_BASEDIR}/rfc${RFC_FMT}.html" "${URL_HTML}"
+
+else
+
+    echo ""
+    echo "ERROR: No curl nor wget installed."
+    echo ""
+
+fi
+
+exit 0
