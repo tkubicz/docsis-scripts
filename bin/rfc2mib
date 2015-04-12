@@ -1,0 +1,54 @@
+#!/usr/bin/env bash
+
+TMP_BASEDIR=~/.snmp/download-`date "+%Y%m%d"`
+MIB_BASEDIR=~/.snmp/mibs-`date "+%Y%m%d"`
+MIB_LINKDIR=~/.snmp/mibs
+
+WGET=`which wget`
+CURL=`which curl`
+W3MB=`which w3m`
+SMISTRIP=`which smistrip`
+rm -rf "${TMP_BASEDIR}"
+rm -rf "${MIB_BASEDIR}"
+mkdir -p "${TMP_BASEDIR}"
+mkdir -p "${MIB_BASEDIR}"
+
+UA='Mozilla/5.0 (Macintosh; Intel Mac OS X 10.9; rv:30.0) Gecko/20100101 Firefox/30.0'
+
+file_download()
+{
+    L_FIL_URL=${1}
+    L_FIL_DST=${2}
+
+    if [ "no${WGET}" != "no" ]; then
+        "${WGET}" -U "${UA}" -O "${L_FIL_DST}" "${L_FIL_URL}"
+
+    elif [ "no${CURL}" != "no" ]; then
+        "${CURL}" -A "${UA}" --location -o "${L_FIL_DST}" "${L_FIL_URL}"
+
+    else
+        echo ""
+        echo "ERROR: No curl nor wget installed."
+        echo ""
+        exit 1
+
+    fi
+}
+
+rfc_download()
+{
+    RFC_ID=${1}
+    RFC_FMT=`printf "%04d" "${RFC_ID}"`
+    URL_TEXT="http://www.ietf.org/rfc/rfc${RFC_ID}.txt"
+    file_download "${URL_TEXT}" "${TMP_BASEDIR}/rfc${RFC_FMT}.txt"
+}
+
+rfc_download "${1}"
+
+cd "${TMP_BASEDIR}"
+"${SMISTRIP}" -d ${MIB_BASEDIR} *
+cd -
+
+rm -rf "${TMP_BASEDIR}"
+
+exit 0

@@ -1,0 +1,279 @@
+#!/usr/bin/env bash
+
+TMP_BASEDIR=~/.snmp/download-`date "+%Y%m%d"`
+MIB_BASEDIR=~/.snmp/mibs-`date "+%Y%m%d"`
+MIB_LINKDIR=~/.snmp/mibs
+
+WGET=`which wget`
+CURL=`which curl`
+W3MB=`which w3m`
+SMISTRIP=`which smistrip`
+rm -rf "${TMP_BASEDIR}"
+rm -rf "${MIB_BASEDIR}"
+mkdir -p "${TMP_BASEDIR}"
+mkdir -p "${MIB_BASEDIR}"
+
+UA='Mozilla/5.0 (Macintosh; Intel Mac OS X 10.9; rv:30.0) Gecko/20100101 Firefox/30.0'
+
+file_download()
+{
+    L_FIL_URL=${1}
+    L_FIL_DST=${2}
+
+    if [ "no${WGET}" != "no" ]; then
+        "${WGET}" -U "${UA}" -O "${L_FIL_DST}" "${L_FIL_URL}"
+
+    elif [ "no${CURL}" != "no" ]; then
+        "${CURL}" -A "${UA}" --location -o "${L_FIL_DST}" "${L_FIL_URL}"
+
+    else
+        echo ""
+        echo "ERROR: No curl nor wget installed."
+        echo ""
+        exit 1
+
+    fi
+}
+
+w3m_download()
+{
+    L_W3M_URL=${1}
+    L_W3M_DST=${2}
+
+    if [ "no${W3MB}" != "no" ]; then
+        "${W3MB}" w3m -dump "${L_W3M_URL}" > "${L_W3M_DST}"
+
+    else
+        file_download "${L_W3M_URL}" "${L_W3M_DST}.tmp"
+        cat "${L_W3M_DST}.tmp" | sed -e :a -e 's/<[^>]*>//g;/</N;//ba' > "${L_W3M_DST}"
+        rm -f "${L_W3M_DST}.tmp"
+
+    fi
+}
+
+rfc_download()
+{
+    RFC_ID=${1}
+    RFC_FMT=`printf "%04d" "${RFC_ID}"`
+    URL_TEXT="http://www.ietf.org/rfc/rfc${RFC_ID}.txt"
+    file_download "${URL_TEXT}" "${TMP_BASEDIR}/rfc${RFC_FMT}.txt"
+}
+
+file_download \
+    "http://www.iana.org/assignments/ianaiftype-mib/ianaiftype-mib" \
+    "${TMP_BASEDIR}/ianaiftype-mib"
+
+file_download \
+    "http://www.iana.org/assignments/ianaiprouteprotocol-mib/ianaiprouteprotocol-mib" \
+    "${TMP_BASEDIR}/ianaiprouteprotocol-mib"
+
+rfc_download "1155"
+rfc_download "1213"
+rfc_download "1513"
+rfc_download "1628"     # UPS-MIB
+rfc_download "2213"
+rfc_download "2287"
+rfc_download "2493"
+rfc_download "2578"     # SNMPv2-SMI
+rfc_download "2579"
+rfc_download "2580"     # SNMPv2-CONF
+# rfc_download "2669"
+rfc_download "2674"
+rfc_download "2786"
+rfc_download "2786"
+rfc_download "2790"
+rfc_download "2819"
+rfc_download "2863"
+rfc_download "2933"
+rfc_download "3083"
+rfc_download "3289"
+rfc_download "3411"
+rfc_download "3412"
+rfc_download "3413"
+rfc_download "3414"
+rfc_download "3415"
+rfc_download "3418"
+rfc_download "3433"
+rfc_download "3584"
+rfc_download "3635"
+rfc_download "3705"
+rfc_download "4001"
+rfc_download "4022"
+rfc_download "4113"
+rfc_download "4131"
+rfc_download "4133"
+rfc_download "4188"
+rfc_download "4292"
+rfc_download "4293"
+rfc_download "4323"
+rfc_download "4502"
+rfc_download "4546"
+rfc_download "4639"
+rfc_download "4682"
+rfc_download "5098"
+rfc_download "5427"
+rfc_download "5428"
+rfc_download "5519"
+
+file_download \
+    "http://www.cablelabs.com/wp-content/uploads/specdocs/CLAB-DEF-MIB-I10-120809.txt" \
+    "${TMP_BASEDIR}/CLAB-DEF-MIB-I10-120809.txt"
+
+file_download \
+    "http://www.cablelabs.com/wp-content/uploads/specdocs/CL-SP-MIB-CLABDEF-I10-120809.txt"
+    "${TMP_BASEDIR}/CL-SP-MIB-CLABDEF-I10-120809.txt"
+
+# file_download \
+#     "http://www.cablelabs.com/wp-content/uploads/specdocs/CL-SP-MIB-BB-I04-100608.txt" \
+#     "${TMP_BASEDIR}/CL-SP-MIB-BB-I04-100608.txt"
+
+file_download \
+    "http://www.cablelabs.com/wp-content/uploads/specdocs/CL-SP-MIB-BB-I04-1006081.txt" \
+    "${TMP_BASEDIR}/CL-SP-MIB-BB-I04-1006081.txt"
+
+file_download \
+    "http://www.cablelabs.com/wp-content/uploads/specdocs/PKT-SP-MIB-MTA1_5-I01-050128.txt" \
+    "${TMP_BASEDIR}/"
+
+file_download \
+    "http://www.cablelabs.com/wp-content/uploads/specdocs/PKT-SP-EXMTA1_5-I01-050128.txt" \
+    "${TMP_BASEDIR}/PKT-SP-EXMTA1_5-I01-050128.txt"
+
+file_download \
+    "http://www.cablelabs.com/wp-content/uploads/specdocs/PKT-SP-EVEMIB1_5-I02-050812.txt" \
+    "${TMP_BASEDIR}/PKT-SP-EVEMIB1_5-I02-050812.txt"
+
+file_download \
+    "http://www.cablelabs.com/wp-content/uploads/specdocs/PKT-SP-MIB-EXSIG1_5-I05-121030.txt" \
+    "${TMP_BASEDIR}/PKT-SP-MIB-EXSIG1_5-I05-121030.txt"
+
+file_download \
+    "http://www.cablelabs.com/wp-content/uploads/specdocs/PKT-SP-MIB-SIG1_5-I01-050128.txt" \
+    "${TMP_BASEDIR}/PKT-SP-MIB-SIG1_5-I01-050128.txt"
+
+file_download \
+    "http://www.cablelabs.com/wp-content/uploads/specdocs/PKT-SP-ESP1_5-I01-050128.txt" \
+    "${TMP_BASEDIR}/PKT-SP-ESP1_5-I01-050128.txt"
+
+# file_download \
+#     "http://www.cablelabs.com/wp-content/uploads/specdocs/CLAB-WIFI-MIB_WiFi-MGMT-I03-1202161.txt" \
+#     "${TMP_BASEDIR}/CLAB-WIFI-MIB_WiFi-MGMT-I03-1202161.txt"
+
+# file_download \
+#     "http://www.cablelabs.com/wp-content/uploads/specdocs/CLAB-WIFI-MIB_WR-SP-WiFi-MGMT-I04-140311.txt" \
+#     "${TMP_BASEDIR}/CLAB-WIFI-MIB_WR-SP-WiFi-MGMT-I04-140311.txt"
+
+file_download \
+    "http://www.cablelabs.com/wp-content/uploads/specdocs/CLAB-WIFI-MIB_WR-SP-WiFi-MGMT-I05-141201.txt" \
+    "${TMP_BASEDIR}/CLAB-WIFI-MIB_WR-SP-WiFi-MGMT-I05-141201.txt"
+
+file_download \
+    "http://www.cablelabs.com/wp-content/uploads/specdocs/OC-HOME-NETWORK-MIB-I08-130530.txt" \
+    "${TMP_BASEDIR}/OC-HOME-NETWORK-MIB-I08-130530.txt"
+
+file_download \
+    "http://www.cablelabs.com/wp-content/uploads/specdocs/OC-STB-HOST-MIB-I14-120531.txt" \
+    "${TMP_BASEDIR}/OC-STB-HOST-MIB-I14-120531.txt"
+
+file_download \
+    "http://www.cablelabs.com/wp-content/uploads/specdocs/ESAFE-MIB-I27-140403.txt" \
+    "${TMP_BASEDIR}/ESAFE-MIB-I27-140403.txt"
+
+file_download \
+    "http://www.cablelabs.com/MIBs/DOCSIS/CCAP-MIB-2013-04-04.txt" \
+    "${TMP_BASEDIR}/CCAP-MIB-2013-04-04.txt"
+
+file_download \
+    "http://www.cablelabs.com/MIBs/DOCSIS/CLAB-TOPO-MIB-2009-01-21.txt" \
+    "${TMP_BASEDIR}/CLAB-TOPO-MIB-2009-01-21.txt"
+
+file_download \
+    "http://www.cablelabs.com/MIBs/DOCSIS/DOCS-DIAG-MIB-2007-12-06.txt" \
+    "${TMP_BASEDIR}/DOCS-DIAG-MIB-2007-12-06.txt"
+
+file_download \
+    "http://www.cablelabs.com/MIBs/DOCSIS/DOCS-IF3-MIB-2013-11-20.txt" \
+    "${TMP_BASEDIR}/DOCS-IF3-MIB-2013-11-20.txt"
+
+file_download \
+    "http://www.cablelabs.com/MIBs/DOCSIS/DOCS-IFEXT2-MIB-2011-06-23.txt" \
+    "${TMP_BASEDIR}/DOCS-IFEXT2-MIB-2011-06-23.txt"
+
+file_download \
+    "http://www.cablelabs.com/MIBs/DOCSIS/DOCS-LOADBAL3-MIB-2010-01-15.txt" \
+    "${TMP_BASEDIR}/DOCS-LOADBAL3-MIB-2010-01-15.txt"
+
+file_download \
+    "http://www.cablelabs.com/MIBs/DOCSIS/DOCS-MCAST-AUTH-MIB-2007-12-06.txt" \
+    "${TMP_BASEDIR}/DOCS-MCAST-AUTH-MIB-2007-12-06.txt"
+
+file_download \
+    "http://www.cablelabs.com/MIBs/DOCSIS/DOCS-MCAST-MIB-2014-07-29.txt" \
+    "${TMP_BASEDIR}/DOCS-MCAST-MIB-2014-07-29.txt"
+
+file_download \
+    "http://www.cablelabs.com/MIBs/DOCSIS/DOCS-QOS3-MIB-2014-07-29.txt" \
+    "${TMP_BASEDIR}/DOCS-QOS3-MIB-2014-07-29.txt"
+
+file_download \
+    "http://www.cablelabs.com/MIBs/DOCSIS/DOCS-SEC-MIB-2010-01-15.txt" \
+    "${TMP_BASEDIR}/DOCS-SEC-MIB-2010-01-15.txt"
+
+file_download \
+    "http://www.cablelabs.com/MIBs/DOCSIS/DOCS-SUBMGT3-MIB-2014-04-03.txt" \
+    "${TMP_BASEDIR}/DOCS-SUBMGT3-MIB-2014-04-03.txt"
+
+w3m_download \
+    "http://www.itu.int/ITU-T/formal-language/itu-t/j/j460.4/2008/CL-PKTC-EUE-EDVA-MIB.html" \
+    "${TMP_BASEDIR}/CL-PKTC-EUE-EDVA-MIB.txt"
+
+w3m_download \
+    "http://www.itu.int/ITU-T/formal-language/itu-t/j/j370/2008/CL-PKTC-EUE-DEV-MIB.html" \
+    "${TMP_BASEDIR}/CL-PKTC-EUE-DEV-MIB.txt"
+
+w3m_download \
+    "http://www.itu.int/ITU-T/formal-language/itu-t/j/j370/2008/CL-PKTC-EUE-EVENT-MIB.html" \
+    "${TMP_BASEDIR}/CL-PKTC-EUE-EVENT-MIB.txt"
+
+w3m_download \
+    "http://www.itu.int/ITU-T/formal-language/itu-t/j/j370/2008/CL-PKTC-EUE-PROV-MGMT-MIB.html" \
+    "${TMP_BASEDIR}/CL-PKTC-EUE-PROV-MGMT-MIB.txt"
+
+w3m_download \
+    "http://www.itu.int/ITU-T/formal-language/itu-t/j/j370/2008/CL-PKTC-EUE-TC-MIB.html" \
+    "${TMP_BASEDIR}/CL-PKTC-EUE-TC-MIB.txt"
+
+w3m_download \
+    "http://www.itu.int/ITU-T/formal-language/itu-t/j/j370/2008/CL-PKTC-EUE-USER-MIB.html" \
+    "${TMP_BASEDIR}/CL-PKTC-EUE-USER-MIB.txt"
+
+file_download \
+    "https://www.scte.org/documents/pdf/Standards/HMS154-5r6.txt" \
+    "${TMP_BASEDIR}/HMS154-5r6.txt"
+
+file_download \
+    "https://www.scte.org/documents/pdf/Standards/HMS154-4R7.txt" \
+    "${TMP_BASEDIR}/HMS154-4R7.txt"
+
+# FIX: UPS-MIB definitions
+sed -i -e \
+    's/OBJECT-IDENTITY, Counter32, Gauge32, Integer32/OBJECT-IDENTITY, Counter32, Gauge32, Integer32, mib-2/g' \
+    "${TMP_BASEDIR}/rfc1628.txt"
+
+# FIX: DOCS-QOS-MIB package name
+sed -i -e \
+    's,DOCS-IETF-QOS-MIB,DOCS-QOS-MIB,g' \
+    "${TMP_BASEDIR}/DOCS-IF-M-CMTS-MIB-I06-081209.txt"
+
+# FIX: DOCS-QOS-MIB package name
+sed -i -e \
+    's,DOCS-IETF-QOS-MIB,DOCS-QOS-MIB,g' \
+    "${TMP_BASEDIR}/DOCS-L2VPN-MIB-13.1109-3.txt"
+
+cd "${TMP_BASEDIR}"
+"${SMISTRIP}" -d ${MIB_BASEDIR} *
+cd -
+
+rm -rf "${TMP_BASEDIR}"
+
+exit 0
