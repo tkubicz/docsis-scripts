@@ -77,7 +77,7 @@ f_ipv6_expand()
     echo ${L_RET:0:39}
 }
 
-while getopts “ha:c:t:T:f:” OPTION
+while getopts "ha:c:t:T:f:" OPTION
 do
     case $OPTION in
         h)

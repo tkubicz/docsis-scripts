@@ -69,6 +69,7 @@ file_download \
 
 rfc_download "1155"
 rfc_download "1213"
+rfc_download "1407"
 rfc_download "1513"
 rfc_download "1628"     # UPS-MIB
 rfc_download "2213"
