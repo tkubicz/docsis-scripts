@@ -2,6 +2,8 @@
 
 CM_SNMP_COMMUNITY=private
 CM_SNMP_BULKSET=0
+SW_DOWNLOAD_MODE=1 # tftp(1)
+CM_SNMP_RESULT=0
 
 usage()
 {
@@ -13,7 +15,7 @@ More scripts at https://github.com/martinclaro/docsis-scripts/
 
 OPTIONS:
     -h          Show this message
-    -a          CM IP address
+    -a addr     CM IP address
     -c text     CM SNMP Community (default: ${CM_SNMP_COMMUNITY})
     -t addr     TFTP IP address
     -f filename Software filename
@@ -38,18 +40,21 @@ f_snmpset()
     L_OID_TYPE=${2}
     L_OID_VALUE=${3}
     snmpset -v2c -c "${CM_SNMP_COMMUNITY}" "${CM_IPADDR}" "${L_OID}" "${L_OID_TYPE}" "${L_OID_VALUE}"
+    return ${?}
 }
 
 f_snmpbulkset()
 {
     L_VARS=${@}
     snmpset -v2c -c "${CM_SNMP_COMMUNITY}" "${CM_IPADDR}" ${L_VARS}
+    return ${?}
 }
 
 f_snmpwalk()
 {
     L_OID=${1}
     snmpbulkwalk -v2c -c "${CM_SNMP_COMMUNITY}" -m all "${CM_IPADDR}" "${L_OID}"
+    return ${?}
 }
 
 f_ipv6_expand()
@@ -107,6 +112,9 @@ do
         f)
             SW_FILENAME=${OPTARG}
             ;;
+        H)
+            SW_DOWNLOAD_MODE=2  # http(2)
+            ;;
         b)
             CM_SNMP_BULKSET=1
             ;;
@@ -127,7 +135,9 @@ fi
 
 echo ""
 echo "### Initial settings"
+# DOCS-CABLE-DEVICE-MIB::docsDevSoftware
 f_snmpwalk ".1.3.6.1.2.1.69.1.3"
+# DOCS-BPI2-MIB::docsBpi2CodeDownloadControl
 f_snmpwalk ".1.3.6.1.2.1.10.127.6.1.4"
 
 CONT=`read_var "Continue?" "n"`
@@ -146,11 +156,38 @@ if [ ${CM_SNMP_BULKSET} -gt 0 ]; then
     # DOCS-CABLE-DEVICE-MIB::docsDevSwAdminStatus.0
 
     f_snmpbulkset \
-        ".1.3.6.1.2.1.69.1.3.1.0" "a" "${TFTP_SERVER}"    \
-        ".1.3.6.1.2.1.69.1.3.2.0" "s" "${SW_FILENAME}"    \
-        ".1.3.6.1.2.1.69.1.3.6.0" "i" "${TFTP_SERVER_T}"  \
-        ".1.3.6.1.2.1.69.1.3.7.0" "x" "${TFTP_SERVER_X}"  \
+        ".1.3.6.1.2.1.69.1.3.1.0" "a" "${TFTP_SERVER}" \
+        ".1.3.6.1.2.1.69.1.3.2.0" "s" "${SW_FILENAME}" \
+        ".1.3.6.1.2.1.69.1.3.6.0" "i" "${TFTP_SERVER_T}" \
+        ".1.3.6.1.2.1.69.1.3.7.0" "x" "${TFTP_SERVER_X}" \
         ".1.3.6.1.2.1.69.1.3.3.0" "i" "1"
+
+    CM_SNMP_RESULT=${?}
+
+    if [ ${CM_SNMP_RESULT} -gt 0 ]; then
+        echo "###"
+        echo "### ERROR setting firmware upgrade directives using snmpbulkset. Falling back to snmpset..."
+        echo "###"
+        echo ""
+
+        # DOCS-CABLE-DEVICE-MIB::docsDevSwServer.0
+        # DOCS-CABLE-DEVICE-MIB::docsDevSwFilename.0
+        # DOCS-CABLE-DEVICE-MIB::docsDevSwServerAddressType.0
+        # DOCS-CABLE-DEVICE-MIB::docsDevSwServerAddress.0
+        # DOCS-CABLE-DEVICE-MIB::docsDevSwAdminStatus.0
+
+        f_snmpset ".1.3.6.1.2.1.69.1.3.1.0" "a" "${TFTP_SERVER}"
+        f_snmpset ".1.3.6.1.2.1.69.1.3.2.0" "s" "${SW_FILENAME}"
+
+        if [ ${TFTP_SERVER_T} -eq 2 ]; then
+            # IPv6
+            f_snmpset ".1.3.6.1.2.1.69.1.3.6.0" "i" "${TFTP_SERVER_T}"
+            f_snmpset ".1.3.6.1.2.1.69.1.3.7.0" "x" "${TFTP_SERVER_X}"
+        fi
+
+        f_snmpset ".1.3.6.1.2.1.69.1.3.3.0" "i" "1"
+
+    fi
 
 else
     # DOCS-CABLE-DEVICE-MIB::docsDevSwServer.0
@@ -171,7 +208,9 @@ CONT=w
 echo ""
 echo "### Final settings"
 while [ "x${CONT}" == "xw" ]; do
+    # DOCS-CABLE-DEVICE-MIB::docsDevSoftware
     f_snmpwalk ".1.3.6.1.2.1.69.1.3"
+    # DOCS-BPI2-MIB::docsBpi2CodeDownloadControl
     f_snmpwalk ".1.3.6.1.2.1.10.127.6.1.4"
 
     CONT=`read_var "Continue?" "w"`
@@ -184,12 +223,12 @@ while [ "x${CONT}" == "xw" ]; do
     fi
 done
 
-CONT=`read_var "Reboot device?" "n"`
-if [ "x${CONT}" == "xy" ]; then
-    echo ""
-    echo "### Rebooting device..."
-    f_snmpset ".1.3.6.1.2.1.69.1.1.3.0" "i" "1"
-fi
+# CONT=`read_var "Reboot device?" "n"`
+# if [ "x${CONT}" == "xy" ]; then
+#     echo ""
+#     echo "### Rebooting device..."
+#     f_snmpset ".1.3.6.1.2.1.69.1.1.3.0" "i" "1"
+# fi
 
 echo ""
 
