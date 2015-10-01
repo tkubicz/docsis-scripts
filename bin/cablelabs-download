@@ -1,0 +1,27 @@
+#!/usr/bin/env bash
+
+g_outdir=${1}
+if [ "x${g_outdir}" == "x" ]; then
+    g_outdir=/tmp/cablelabs-specs-`date "+%Y%m%d"`
+fi
+
+g_wget=`which wget`
+
+cd /tmp
+${g_wget} \
+    -r \
+    -e robots=off \
+    --no-host-directories \
+    --no-parent \
+    --reject="index.html*" \
+    --reject="*.docx" \
+    --reject="*.doc" \
+    'http://www.cablelabs.com/wp-content/uploads/specdocs/'
+g_retval=${?}
+mv /tmp/wp-content/uploads/specdocs ${g_outdir}
+
+echo ""
+echo "OUTPUT FOLDER: ${g_outdir}"
+echo ""
+
+exit ${g_retval}
