@@ -18,7 +18,7 @@ OPTIONS:
 EOF
 }
 
-while getopts “hr:d:” OPTION
+while getopts "hr:d:" OPTION
 do
     case $OPTION in
         h)

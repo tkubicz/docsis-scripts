@@ -5,6 +5,7 @@ CM_SNMP_COMMUNITY=private
 CM_FORCE_IPV=4
 SNMP_TIMEOUT=1
 SNMP_RETRIES=2
+G_DEBUG=0
 
 usage()
 {
@@ -24,6 +25,7 @@ OPTIONS:
     -6          Force usage of IPv6 to access Cable Modem
     -T seconds  Timeout (default: ${SNMP_TIMEOUT})
     -R count    Retries (default: ${SNMP_RETRIES})
+    -d          Debug mode (default: off)
 
 EOF
 }
@@ -116,7 +118,7 @@ f_freq_format()
     echo "${L_HZ}" | ${C_AWK} '{printf "%0.3f MHz",$1/1000000}'
 }
 
-while getopts “hr:k:m:c:T:R:46” OPTION
+while getopts "hr:k:m:c:T:R:d46" OPTION
 do
     case ${OPTION} in
         h)
@@ -145,6 +147,9 @@ do
         R)
             SNMP_RETRIES=${OPTARG}
             ;;
+        d)
+            G_DEBUG=1
+            ;;
         4)
             CM_FORCE_IPV=4
             ;;
@@ -164,6 +169,17 @@ if [ "no${CMTS_IPADDR}" == "no" ] || [ "no${CM_MAC}" == "no" ] || [ "no${CMTS_SN
 fi
 
 printf "\nLoading information... Please wait... "
+
+if [ ${G_DEBUG} -gt 0 ]; then
+    G_OS=`uname -s | tr [:upper:] [:lower:]`
+    if [ "X${G_OS}" == "Xdarwin" ]; then
+        set -x
+    else
+        N=`date +%s%N`;
+        export PS4='+[ $(((`date +%s%N`-$N)/1000000))ms ][ ${BASH_SOURCE}:${LINENO} ]: ${FUNCNAME[0]:+${FUNCNAME[0]}(): }';
+        set -x
+    fi
+fi
 
 # Force to Unload MIBs
 export MIBS=""
@@ -261,7 +277,11 @@ fi
 CM_CMTS_DS_CHN_IFINDEX_OID=".1.3.6.1.2.1.10.127.1.3.3.1.4.${CM_INDEX}"  # DOCS-IF-MIB::docsIfCmtsCmStatusDownChannelIfIndex
 CM_CMTS_US_CHN_IFINDEX_OID=".1.3.6.1.2.1.10.127.1.3.3.1.5.${CM_INDEX}"  # DOCS-IF-MIB::docsIfCmtsCmStatusUpChannelIfIndex
 
+CMTS_CM_STATUS_OID=".1.3.6.1.2.1.10.127.1.3.3.1.9.${CM_INDEX}"      # DOCS-IF-MIB::docsIfCmtsCmStatusValue.X
+
 CM_IPADDR_OID=".1.3.6.1.2.1.10.127.1.3.3.1.3.${CM_INDEX}"           # DOCS-IF-MIB::docsIfCmtsCmStatusIpAddress.X
+CM_IP4ADDR_OID_D3=".1.3.6.1.4.1.4491.2.1.20.1.3.1.5.${CM_INDEX}"    # DOCS-IF3-MIB::docsIf3CmtsCmRegStatusIPv4Addr.X
+CM_IP6ADDR_OID_D3=".1.3.6.1.4.1.4491.2.1.20.1.3.1.3.${CM_INDEX}"    # DOCS-IF3-MIB::docsIf3CmtsCmRegStatusIPv6Addr.X
 
 CM_RF_DS_OID=".1.3.6.1.2.1.10.127.1.1.1.1.6.3"                      # DOCS-IF-MIB::docsIfDownChannelPower.3
 CM_RF_DS_OID_D3=".1.3.6.1.2.1.10.127.1.1.1.1.6"                     # DOCS-IF3-MIB::docsIfDownChannelPower.Y
@@ -275,9 +295,6 @@ CM_SNR_DS_OID_D3=".1.3.6.1.4.1.4491.2.1.20.1.24.1.1"                # DOCS-IF3-M
 CM_SNR_US_OID=".1.3.6.1.2.1.10.127.1.3.3.1.13.${CM_INDEX}"          # DOCS-IF-MIB::docsIfCmtsCmStatusSignalNoise.X
 CM_SNR_US_OID_D3=".1.3.6.1.4.1.4491.2.1.20.1.4.1.4.${CM_INDEX}"     # DOCS-IF3-MIB::docsIf3CmtsCmUsStatusSignalNoise.X
 
-CM_IP4ADDR_OID_D3=".1.3.6.1.4.1.4491.2.1.20.1.3.1.5.${CM_INDEX}"    # DOCS-IF3-MIB::docsIf3CmtsCmRegStatusIPv4Addr.X
-CM_IP6ADDR_OID_D3=".1.3.6.1.4.1.4491.2.1.20.1.3.1.3.${CM_INDEX}"    # DOCS-IF3-MIB::docsIf3CmtsCmRegStatusIPv6Addr.X
-
 CM_MACDOMAIN_IFINDEX_OID_D3=".1.3.6.1.4.1.4491.2.1.20.1.3.1.7.${CM_INDEX}"  # DOCS-IF3-MIB::docsIf3CmtsCmRegStatusMdIfIndex.X
 CM_SERVGROUP_IFINDEX_OID_D3=".1.3.6.1.4.1.4491.2.1.20.1.3.1.8.${CM_INDEX}"  # DOCS-IF3-MIB::docsIf3CmtsCmRegStatusMdCmSgId.X
 
@@ -287,6 +304,8 @@ DOCSIS_QOS_PKTCLASS_DIR_OID_D3=".1.3.6.1.4.1.4491.2.1.21.1.1.1.2"   # DOCS-QOS3-
 DOCSIS_QOS_PKTCLASS_PRIO_OID=".1.3.6.1.2.1.10.127.7.1.1.1.3"        # DOCS-QOS-MIB::docsQosPktClassPriority.X.Y.Z
 DOCSIS_QOS_PKTCLASS_PRIO_OID_D3=".1.3.6.1.4.1.4491.2.1.21.1.1.1.3"  # DOCS-QOS3-MIB::docsQosPktClassPriority.X.Y.Z
 
+# Reading Values
+CMTS_CM_STATUS=`f_snmpget_string "${CMTS_SNMP_COMMUNITY}" "${CMTS_IPADDR}" "${CMTS_CM_STATUS_OID}" | grep -vi '^no such'`
 CM_IP4ADDR=`f_snmpget_string "${CMTS_SNMP_COMMUNITY}" "${CMTS_IPADDR}" "${CM_IPADDR_OID}" | grep -vi '^no such' | sed -e 's,[^0-9\.],,g'`
 CM_IP6ADDR=`f_snmpget_string "${CMTS_SNMP_COMMUNITY}" "${CMTS_IPADDR}" "${CM_IP6ADDR_OID_D3}" | grep -vi '^no such' | sed -e 's,[^0-9a-fA-F\:],,g'`
 
@@ -305,7 +324,9 @@ else
     elif [ "no${CM_IP6ADDR}" != "no" ] && [ "no${CM_IP6ADDR}" != "no0000:0000:0000:0000:0000:0000:0000:0000" ]; then
         CM_IPADDR=udp6:${CM_IP6ADDR}
     else
-        echo "ERROR: Could not retreive Cable Modem IP address for ${CM_MAC:0:4}.${CM_MAC:4:4}.${CM_MAC:8:4}. Exiting..."
+        echo "ERROR: Could not retreive Cable Modem IP address for ${CM_MAC:0:4}.${CM_MAC:4:4}.${CM_MAC:8:4}."
+        echo "ERROR: Cable Modem Status: ${CMTS_CM_STATUS:-N/A}"
+        echo ""
         exit 3
     fi
 fi
@@ -375,22 +396,28 @@ esac
 
 if [ ${CM_D3_BONDING} -eq 0 ]; then
 
-    CM_RF_DS=`f_snmpget_enum "${CM_SNMP_COMMUNITY}" ${CM_IPADDR} ${CM_RF_DS_OID} | ${C_AWK} '{printf "%0.1f",$1/10}'`
-    CM_RF_US=`f_snmpget_enum "${CM_SNMP_COMMUNITY}" ${CM_IPADDR} ${CM_RF_US_OID} | ${C_AWK} '{printf "%0.1f",$1/10}'`
-    CM_SNR_DS=`f_snmpget_enum "${CM_SNMP_COMMUNITY}" ${CM_IPADDR} ${CM_SNR_DS_OID} | ${C_AWK} '{printf "%0.1f",$1/10}'`
-    CM_SNR_US=`f_snmpget_enum "${CMTS_SNMP_COMMUNITY}" ${CMTS_IPADDR} ${CM_SNR_US_OID} | ${C_AWK} '{printf "%0.1f",$1/10}'`
+    CM_RFP_DS_BONDING=1
+    CM_RFP_US_BONDING=1
+    CM_SNR_DS_BONDING=1
+    CM_SNR_US_BONDING=1
+
+    CM_RFP_DS_B[ ${CM_RFP_DS_BONDING} ]=`f_snmpget_enum "${CM_SNMP_COMMUNITY}" ${CM_IPADDR} ${CM_RF_DS_OID} | ${C_AWK} '{printf "%0.1f",$1/10}' | ${C_AWK} '{printf "%5s",$1}'`
+    CM_RFP_US_B[ ${CM_RFP_US_BONDING} ]=`f_snmpget_enum "${CM_SNMP_COMMUNITY}" ${CM_IPADDR} ${CM_RF_US_OID} | ${C_AWK} '{printf "%0.1f",$1/10}' | ${C_AWK} '{printf "%5s",$1}'`
+    CM_SNR_DS_B[ ${CM_SNR_DS_BONDING} ]=`f_snmpget_enum "${CM_SNMP_COMMUNITY}" ${CM_IPADDR} ${CM_SNR_DS_OID} | ${C_AWK} '{printf "%0.1f",$1/10}' | ${C_AWK} '{printf "%5s",$1}'`
+    CM_SNR_US_B[ ${CM_SNR_US_BONDING} ]=`f_snmpget_enum "${CMTS_SNMP_COMMUNITY}" ${CMTS_IPADDR} ${CM_SNR_US_OID} | ${C_AWK} '{printf "%0.1f",$1/10}' | ${C_AWK} '{printf "%5s",$1}'`
 
     CM_CMTS_DS_CHN_IFINDEX=`f_snmpget_enum "${CMTS_SNMP_COMMUNITY}" "${CMTS_IPADDR}" "${CM_CMTS_DS_CHN_IFINDEX_OID}" | sed -e 's,[^0-9],,g'`
-    CM_CMTS_DS_CHN_IFNAME[1]=`f_snmpget_string "${CMTS_SNMP_COMMUNITY}" "${CMTS_IPADDR}" "${SNMP_IF_NAME}.${CM_CMTS_DS_CHN_IFINDEX}"`
-    CM_CMTS_DS_CHN_IFALIAS[1]=`f_snmpget_string "${CMTS_SNMP_COMMUNITY}" "${CMTS_IPADDR}" "${SNMP_IF_ALIAS}.${CM_CMTS_DS_CHN_IFINDEX}"`
-    CM_CMTS_DS_CHN_IFDESCR[1]=`f_snmpget_string "${CMTS_SNMP_COMMUNITY}" "${CMTS_IPADDR}" "${SNMP_IF_DESCR}.${CM_CMTS_DS_CHN_IFINDEX}"`
-    # CM_CMTS_DS_CHN_FREQ[1]=``
+    CM_CMTS_DS_CHN_IFNAME[ ${CM_RFP_DS_BONDING} ]=`f_snmpget_string "${CMTS_SNMP_COMMUNITY}" "${CMTS_IPADDR}" "${SNMP_IF_NAME}.${CM_CMTS_DS_CHN_IFINDEX}"`
+    CM_CMTS_DS_CHN_IFALIAS[ ${CM_RFP_DS_BONDING} ]=`f_snmpget_string "${CMTS_SNMP_COMMUNITY}" "${CMTS_IPADDR}" "${SNMP_IF_ALIAS}.${CM_CMTS_DS_CHN_IFINDEX}"`
+    CM_CMTS_DS_CHN_IFDESCR[ ${CM_RFP_DS_BONDING} ]=`f_snmpget_string "${CMTS_SNMP_COMMUNITY}" "${CMTS_IPADDR}" "${SNMP_IF_DESCR}.${CM_CMTS_DS_CHN_IFINDEX}"`
 
     CM_CMTS_US_CHN_IFINDEX=`f_snmpget_enum "${CMTS_SNMP_COMMUNITY}" "${CMTS_IPADDR}" "${CM_CMTS_US_CHN_IFINDEX_OID}" | sed -e 's,[^0-9],,g'`
-    CM_CMTS_US_CHN_IFNAME[1]=`f_snmpget_string "${CMTS_SNMP_COMMUNITY}" "${CMTS_IPADDR}" "${SNMP_IF_NAME}.${CM_CMTS_US_CHN_IFINDEX}"`
-    CM_CMTS_US_CHN_IFALIAS[1]=`f_snmpget_string "${CMTS_SNMP_COMMUNITY}" "${CMTS_IPADDR}" "${SNMP_IF_ALIAS}.${CM_CMTS_US_CHN_IFINDEX}"`
-    CM_CMTS_US_CHN_IFDESCR[1]=`f_snmpget_string "${CMTS_SNMP_COMMUNITY}" "${CMTS_IPADDR}" "${SNMP_IF_DESCR}.${CM_CMTS_US_CHN_IFINDEX}"`
+    CM_CMTS_US_CHN_IFNAME[ ${CM_SNR_US_BONDING} ]=`f_snmpget_string "${CMTS_SNMP_COMMUNITY}" "${CMTS_IPADDR}" "${SNMP_IF_NAME}.${CM_CMTS_US_CHN_IFINDEX}"`
+    CM_CMTS_US_CHN_IFALIAS[ ${CM_SNR_US_BONDING} ]=`f_snmpget_string "${CMTS_SNMP_COMMUNITY}" "${CMTS_IPADDR}" "${SNMP_IF_ALIAS}.${CM_CMTS_US_CHN_IFINDEX}"`
+    CM_CMTS_US_CHN_IFDESCR[ ${CM_SNR_US_BONDING} ]=`f_snmpget_string "${CMTS_SNMP_COMMUNITY}" "${CMTS_IPADDR}" "${SNMP_IF_DESCR}.${CM_CMTS_US_CHN_IFINDEX}"`
+
 else
+
     CM_SERVGROUP_IFINDEX=`f_snmpget_enum "${CMTS_SNMP_COMMUNITY}" "${CMTS_IPADDR}" "${CM_SERVGROUP_IFINDEX_OID_D3}" | sed -e 's,[^0-9],,g'`
     if [ "x${CM_SERVGROUP_IFINDEX}" = "x0" ]; then
         CM_MACDOMAIN_IFINDEX=`f_snmpget_enum "${CMTS_SNMP_COMMUNITY}" "${CMTS_IPADDR}" "${CM_MACDOMAIN_IFINDEX_OID_D3}" | sed -e 's,[^0-9],,g'`
@@ -407,7 +434,7 @@ else
     CM_RF_DS_DA=`f_snmpgetnext_enum "${CM_SNMP_COMMUNITY}" "${CM_IPADDR}" "${CM_RF_DS_OID_D3}" | grep "^${CM_RF_DS_OID_D3}\." | grep -vi 'no such' | ${C_AWK} '{printf "%s %0.1f",$1,$2/10}'`
     while [ "no${CM_RF_DS_DA}" != "no" ]; do
         CM_RFP_DS_BONDING=$[ ${CM_RFP_DS_BONDING} + 1 ]
-        CM_RFP_DS_B[ ${CM_RFP_DS_BONDING} ]=`echo "${CM_RF_DS_DA}" | ${C_AWK} '{printf "%4s",$2}'`
+        CM_RFP_DS_B[ ${CM_RFP_DS_BONDING} ]=`echo "${CM_RF_DS_DA}" | ${C_AWK} '{printf "%5s",$2}'`
         CM_RF_DS_OID_D3_LAST=`echo "${CM_RF_DS_DA}" | ${C_AWK} '{print $1}'`
 
         CM_DS_CHN_IFINDEX=`echo "${CM_RF_DS_DA}" | awk '{print $1}' | sed -e 's,^'${CM_RF_DS_OID_D3}'\.,,g'`
@@ -424,44 +451,33 @@ else
     CM_RF_US_DA=`f_snmpgetnext_enum "${CM_SNMP_COMMUNITY}" "${CM_IPADDR}" "${CM_RF_US_OID_D3}" | grep "^${CM_RF_US_OID_D3}\." | grep -vi 'no such' | ${C_AWK} '{printf "%s %0.1f",$1,$2/10}'`
     while [ "no${CM_RF_US_DA}" != "no" ]; do
         CM_RFP_US_BONDING=$[ ${CM_RFP_US_BONDING} + 1 ]
-        CM_RFP_US_B[ ${CM_RFP_US_BONDING} ]=`echo "${CM_RF_US_DA}" | ${C_AWK} '{printf "%4s",$2}'`
+        CM_RFP_US_B[ ${CM_RFP_US_BONDING} ]=`echo "${CM_RF_US_DA}" | ${C_AWK} '{printf "%5s",$2}'`
         CM_RF_US_OID_D3_LAST=`echo "${CM_RF_US_DA}" | ${C_AWK} '{print $1}'`
-
         CM_RF_US_DA=`f_snmpgetnext_enum "${CM_SNMP_COMMUNITY}" "${CM_IPADDR}" "${CM_RF_US_OID_D3_LAST}" | grep "^${CM_RF_US_OID_D3}\." | grep -vi 'no such' | ${C_AWK} '{printf "%s %0.1f",$1,$2/10}'`
     done
 
     CM_SNR_DS_DA=`f_snmpgetnext_enum "${CM_SNMP_COMMUNITY}" "${CM_IPADDR}" "${CM_SNR_DS_OID_D3}" | grep "^${CM_SNR_DS_OID_D3}\." | grep -vi 'no such' | ${C_AWK} '{printf "%s %0.1f",$1,$2/10}'`
     while [ "no${CM_SNR_DS_DA}" != "no" ]; do
         CM_SNR_DS_BONDING=$[ ${CM_SNR_DS_BONDING} + 1 ]
-        CM_SNR_DS_B[ ${CM_SNR_DS_BONDING} ]=`echo "${CM_SNR_DS_DA}" | ${C_AWK} '{printf "%4s",$2}'`
+        CM_SNR_DS_B[ ${CM_SNR_DS_BONDING} ]=`echo "${CM_SNR_DS_DA}" | ${C_AWK} '{printf "%5s",$2}'`
         CM_SNR_DS_OID_D3_LAST=`echo "${CM_SNR_DS_DA}" | ${C_AWK} '{print $1}'`
         CM_SNR_DS_DA=`f_snmpgetnext_enum "${CM_SNMP_COMMUNITY}" "${CM_IPADDR}" "${CM_SNR_DS_OID_D3_LAST}" | grep "^${CM_SNR_DS_OID_D3}\." | grep -vi 'no such' | ${C_AWK} '{printf "%s %0.1f",$1,$2/10}'`
     done
 
     CM_SNR_US_DA=`f_snmpgetnext_enum "${CMTS_SNMP_COMMUNITY}" "${CMTS_IPADDR}" "${CM_SNR_US_OID_D3}" | grep "^${CM_SNR_US_OID_D3}\." | grep -vi 'no such' | ${C_AWK} '{printf "%s %0.1f",$1,$2/10}'`
-    if [ "no${CM_SNR_US_DA}" != "no" ]; then
-        while [ "no${CM_SNR_US_DA}" != "no" ]; do
-            CM_SNR_US_BONDING=$[ ${CM_SNR_US_BONDING} + 1 ]
-            CM_SNR_US_B[ ${CM_SNR_US_BONDING} ]=`echo "${CM_SNR_US_DA}" | ${C_AWK} '{printf "%4s",$2}'`
-            CM_SNR_US_OID_D3_LAST=`echo "${CM_SNR_US_DA}" | ${C_AWK} '{print $1}'`
+	while [ "no${CM_SNR_US_DA}" != "no" ]; do
+		CM_SNR_US_BONDING=$[ ${CM_SNR_US_BONDING} + 1 ]
+		CM_SNR_US_B[ ${CM_SNR_US_BONDING} ]=`echo "${CM_SNR_US_DA}" | ${C_AWK} '{printf "%5s",$2}'`
+		CM_SNR_US_OID_D3_LAST=`echo "${CM_SNR_US_DA}" | ${C_AWK} '{print $1}'`
 
-            CM_CMTS_US_CHN_IFINDEX=`echo "${CM_SNR_US_DA}" | awk '{print $1}' | sed -e 's,^'${CM_SNR_US_OID_D3}'\.,,g'`
-            CM_CMTS_US_CHN_FREQ[ ${CM_SNR_US_BONDING} ]=`f_snmpget_enum "${CMTS_SNMP_COMMUNITY}" "${CMTS_IPADDR}" "${CMT_US_CHN_FREQ_OID}.${CM_CMTS_US_CHN_IFINDEX}" | sed -e 's,[^0-9],,g'`
-            CM_CMTS_US_CHN_IFNAME[ ${CM_SNR_US_BONDING} ]=`f_snmpget_string "${CMTS_SNMP_COMMUNITY}" "${CMTS_IPADDR}" "${SNMP_IF_NAME}.${CM_CMTS_US_CHN_IFINDEX}"`
-            CM_CMTS_US_CHN_IFALIAS[ ${CM_SNR_US_BONDING} ]=`f_snmpget_string "${CMTS_SNMP_COMMUNITY}" "${CMTS_IPADDR}" "${SNMP_IF_ALIAS}.${CM_CMTS_US_CHN_IFINDEX}"`
-            CM_CMTS_US_CHN_IFDESCR[ ${CM_SNR_US_BONDING} ]=`f_snmpget_string "${CMTS_SNMP_COMMUNITY}" "${CMTS_IPADDR}" "${SNMP_IF_DESCR}.${CM_CMTS_US_CHN_IFINDEX}"`
+		CM_CMTS_US_CHN_IFINDEX=`echo "${CM_SNR_US_DA}" | awk '{print $1}' | sed -e 's,^'${CM_SNR_US_OID_D3}'\.,,g'`
+		CM_CMTS_US_CHN_FREQ[ ${CM_SNR_US_BONDING} ]=`f_snmpget_enum "${CMTS_SNMP_COMMUNITY}" "${CMTS_IPADDR}" "${CMT_US_CHN_FREQ_OID}.${CM_CMTS_US_CHN_IFINDEX}" | sed -e 's,[^0-9],,g'`
+		CM_CMTS_US_CHN_IFNAME[ ${CM_SNR_US_BONDING} ]=`f_snmpget_string "${CMTS_SNMP_COMMUNITY}" "${CMTS_IPADDR}" "${SNMP_IF_NAME}.${CM_CMTS_US_CHN_IFINDEX}"`
+		CM_CMTS_US_CHN_IFALIAS[ ${CM_SNR_US_BONDING} ]=`f_snmpget_string "${CMTS_SNMP_COMMUNITY}" "${CMTS_IPADDR}" "${SNMP_IF_ALIAS}.${CM_CMTS_US_CHN_IFINDEX}"`
+		CM_CMTS_US_CHN_IFDESCR[ ${CM_SNR_US_BONDING} ]=`f_snmpget_string "${CMTS_SNMP_COMMUNITY}" "${CMTS_IPADDR}" "${SNMP_IF_DESCR}.${CM_CMTS_US_CHN_IFINDEX}"`
 
-            CM_SNR_US_DA=`f_snmpgetnext_enum "${CMTS_SNMP_COMMUNITY}" "${CMTS_IPADDR}" "${CM_SNR_US_OID_D3_LAST}" | grep "^${CM_SNR_US_OID_D3}\." | grep -vi 'no such' | ${C_AWK} '{printf "%s %0.1f",$1,$2/10}'`
-        done
-    else
-        for CM_SNR_US_BONDING in `seq 1 4`; do
-            CM_SNR_US_B[ ${CM_SNR_US_BONDING} ]=`f_snmpget_enum "${CMTS_SNMP_COMMUNITY}" "${CMTS_IPADDR}" "${CM_SNR_US_OID_D3}.${CM_SNR_US_BONDING}" | ${C_AWK} '{printf "%0.1f",$1/10}' | sed -e 's,^0\.0$,,g'`
-            CM_SNR_US_B[ ${CM_SNR_US_BONDING} ]=`echo "${CM_SNR_US_B[ ${CM_SNR_US_BONDING} ]:-    }" | ${C_AWK} '{printf "%4s",$1}'`
-
-            CM_CMTS_US_CHN_FREQ[ ${CM_SNR_US_BONDING} ]=`f_snmpget_enum "${CMTS_SNMP_COMMUNITY}" "${CMTS_IPADDR}" "${CMT_DS_CHN_FREQ_OID}.${CM_SNR_US_BONDING}" | sed -e 's,[^0-9],,g'`
-        done
-
-    fi
+		CM_SNR_US_DA=`f_snmpgetnext_enum "${CMTS_SNMP_COMMUNITY}" "${CMTS_IPADDR}" "${CM_SNR_US_OID_D3_LAST}" | grep "^${CM_SNR_US_OID_D3}\." | grep -vi 'no such' | ${C_AWK} '{printf "%s %0.1f",$1,$2/10}'`
+	done
 
 fi
 
@@ -567,23 +583,66 @@ done
 
 cat << EOF
 ### Cable Modem
+Cable Modem Status:       ${CMTS_CM_STATUS:-N/A}
 Cable Modem IP address:   ${CM_IP4ADDR} / ${CM_IP6ADDR}
 Cable Modem Uptime:       ${CM_UPTIME}
 CM DOCSIS Capability:     ${CM_DOCSIS_CAPABILITY}
 
 ### Cable Modem RF/SNR Levels
-
 EOF
 
-printf "Downstream                Power           | SNR\n"
-for B in `seq 1 ${CM_SNR_DS_BONDING}`; do
-    printf "Channel %-3s               %5s dBmV      | %5s TenthdB\n" "${B}:" "${CM_RFP_DS_B[$B]}" "${CM_SNR_DS_B[$B]}"
+CM_MAX_BLOCK=4
+if [ ${CM_SNR_DS_BONDING} -gt ${CM_SNR_US_BONDING} ]; then
+    CM_MAX_BONDING=`echo "${CM_SNR_DS_BONDING} ${CM_MAX_BLOCK}" | ${C_AWK} '{printf("%0.1f",($1/$2))}' | ${C_AWK} '{printf("%d",$1+=$1<0?0:0.9)}'`
+else
+    CM_MAX_BONDING=`echo "${CM_SNR_US_BONDING} ${CM_MAX_BLOCK}" | ${C_AWK} '{printf("%0.1f",($1/$2))}' | ${C_AWK} '{printf("%d",$1+=$1<0?0:0.9)}'`
+fi
+CM_MAX_BONDING=$[ ${CM_MAX_BONDING} * ${CM_MAX_BLOCK} ]
+
+printf "%-26s" "Channel Bonding:"
+for B in `seq 1 ${CM_MAX_BONDING}`; do
+    if [ ${B} -gt 1 ]; then
+        printf " | "
+    fi
+    printf "%5s" "Ch ${B}"
 done
-echo ""
-printf "Upstream                  Power           | SNR\n"
-for B in `seq 1 ${CM_SNR_US_BONDING}`; do
-    printf "Channel %-3s               %5s TenthdBmV | %5s TenthdB\n" "${B}:" "${CM_RFP_US_B[$B]}" "${CM_SNR_US_B[$B]}"
+printf "\n"
+
+printf "%-26s" "Downstream Power Level:"
+for B in `seq 1 ${CM_MAX_BONDING}`; do
+    if [ ${B} -gt 1 ]; then
+        printf " | "
+    fi
+    printf "%5s" "${CM_RFP_DS_B[${B}]:- }"
 done
+printf " dBmV\n"
+
+printf "%-26s" "Upstream Power Level:"
+for B in `seq 1 ${CM_MAX_BONDING}`; do
+    if [ ${B} -gt 1 ]; then
+        printf " | "
+    fi
+    printf "%5s" "${CM_RFP_US_B[${B}]:- }"
+done
+printf " TenthdBmV\n"
+
+printf "%-26s" "Downstream SNR:"
+for B in `seq 1 ${CM_MAX_BONDING}`; do
+    if [ ${B} -gt 1 ]; then
+        printf " | "
+    fi
+    printf "%5s" "${CM_SNR_DS_B[${B}]:- }"
+done
+printf " TenthdB\n"
+
+printf "%-26s" "Upstream SNR:"
+for B in `seq 1 ${CM_MAX_BONDING}`; do
+    if [ ${B} -gt 1 ]; then
+        printf " | "
+    fi
+    printf "%5s" "${CM_SNR_US_B[${B}]:- }"
+done
+printf " TenthdB\n"
 
 cat << EOF
 
