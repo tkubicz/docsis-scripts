@@ -202,6 +202,7 @@ DOCSIS_CAPABILITY_OID_D31=".1.3.6.1.4.1.4491.2.1.28.1.1.0"          # DOCS-IF31-
 CMT_DS_CHN_FREQ_OID=".1.3.6.1.2.1.10.127.1.1.1.1.2"                 # DOCS-IF-MIB::docsIfDownChannelFrequency
 CMT_US_CHN_FREQ_OID=".1.3.6.1.2.1.10.127.1.1.2.1.2"                 # DOCS-IF-MIB::docsIfUpChannelFrequency
 
+CM_SERIAL_OID=".1.3.6.1.2.1.69.1.1.4.0"                             # DOCS-CABLE-DEVICE-MIB::docsDevSerialNumber.0
 CM_SW_SERVER_OID=".1.3.6.1.2.1.69.1.3.1.0"                          # DOCS-CABLE-DEVICE-MIB::docsDevSwServer.0
 CM_SW_FWFILE_OID=".1.3.6.1.2.1.69.1.3.2.0"                          # DOCS-CABLE-DEVICE-MIB::docsDevSwFilename.0
 CM_SW_ADMIN_STATUS_OID=".1.3.6.1.2.1.69.1.3.3.0"                    # DOCS-CABLE-DEVICE-MIB::docsDevSwAdminStatus.0
@@ -492,6 +493,9 @@ CM_ROM=`echo "${CM_SYSDESCR}" | sed -e 's,.*<<\(.*\)>>.*,\1,g' | sed -e 's,^.*[B
 CM_FIRM=`echo "${CM_SYSDESCR}" | sed -e 's,.*<<\(.*\)>>.*,\1,g' | sed -e 's,^.*[Ss][Ww]_[Rr][Ee][Vv]:,,g' | sed -e 's,;.*$,,g' | sed -e 's,^ ,,g' | sed -e 's, $,,g'`
 CM_MODEL=`echo "${CM_SYSDESCR}" | sed -e 's,.*<<\(.*\)>>.*,\1,g' | sed -e 's,^.*[Mm][Oo][Dd][Ee][Ll]:,,g' | sed -e 's,;.*$,,g' | sed -e 's,^ ,,g' | sed -e 's, $,,g'`
 
+# Serial Number
+CM_SERIAL=`f_snmpget_string "${CM_SNMP_COMMUNITY}" "${CM_IPADDR}" "${CM_SERIAL_OID}"`
+
 # Status
 SW_ADMIN_STATUS=`f_snmpget_enum "${CM_SNMP_COMMUNITY}" "${CM_IPADDR}" "${CM_SW_ADMIN_STATUS_OID}"`
 SW_OPER_STATUS=`f_snmpget_enum "${CM_SNMP_COMMUNITY}" "${CM_IPADDR}" "${CM_SW_OPER_STATUS_OID}"`
@@ -652,6 +656,7 @@ Model:                    ${CM_MODEL:-N/A}
 Hardware Version:         ${CM_HWREV:-N/A}
 Software Version:         ${CM_FIRM:-N/A}
 Boot ROM Version:         ${CM_ROM:-N/A}
+Serial Number:            ${CM_SERIAL:-N/A}
 
 ### Firmware Management
 Admin Status:             ${SW_ADMIN_STATUS_TXT}
