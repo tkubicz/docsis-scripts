@@ -19,15 +19,22 @@ if [ "x${OUI}" == "x" ]; then
     exit 1
 fi
 
+MILLIS=`date "+%s000" | cut -b1-13`
 TMP=`mktemp /tmp/oui-search.XXXXXX`
 
-curl --request POST \
-    --data "x=${OUI}&submit2=Search" \
+curl \
+    -H 'Host: services13.ieee.org' \
+    -H 'Accept: application/json, text/javascript, */*; q=0.01' \
+    -H 'Accept-Language: en-US,en;q=0.5' \
+    -H 'Accept-Encoding: gzip, deflate, br' \
+    -H 'Content-Type: application/json; charset=utf-8' \
+    -H 'Referer: http://regauth.standards.ieee.org/standards-ra-web/pub/view.html' \
+    -H 'Origin: http://regauth.standards.ieee.org' \
     -o "${TMP}" \
     --silent \
-    http://standards.ieee.org/cgi-bin/ouisearch
+    'https://services13.ieee.org/RST/standards-ra-web/rest/assignments/?registry=MAC&text='${OUI}'&sortby=organization&sortorder=asc&size=10&time='${MILLIS}
 
-cat "${TMP}" | sed -e :a -e 's/<[^>]*>//g;/</N;//ba'
+cat "${TMP}" | python -m 'json.tool'
 rm -f "${TMP}"
 
 exit 0
